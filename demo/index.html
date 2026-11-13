@@ -192,9 +192,28 @@
       set(eid, 'on', Object.assign({ brightness: modes[0] === 'onoff' ? null : bri }, d.hs_color ? { hs_color: d.hs_color, color_mode: 'hs' } : {}, d.color_temp_kelvin ? { color_temp_kelvin: d.color_temp_kelvin, color_mode: 'color_temp' } : {}, d.effect ? { effect: d.effect } : {}));
     };
     const ids = d => [].concat(d.entity_id || []);
+    // Home Assistant's saved frontend data (the layout lock and the Customise setup), kept in this browser for the demo
+    const subs = [], dataKey = m => 'homeRingDemo:' + (m.type.includes('user') ? 'user:' : 'all:') + m.key;
+    const readData = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
     hass = {
       states: Object.assign({}, states), entities, devices, areas, floors,
       user: { name: 'Demo' }, language: 'en',
+      connection: {
+        subscribeMessage(cb, msg) {
+          const s = { k: dataKey(msg), cb }; subs.push(s);
+          Promise.resolve().then(() => cb({ value: readData(s.k) }));
+          return Promise.resolve(() => { const i = subs.indexOf(s); if (i >= 0) subs.splice(i, 1); });
+        },
+      },
+      callWS(msg) {
+        const k = dataKey(msg);
+        if (/\/set_(system|user)_data$/.test(msg.type)) {
+          try { if (msg.value == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(msg.value)); } catch (e) {}
+          subs.filter(s => s.k === k).forEach(s => s.cb({ value: msg.value == null ? null : msg.value }));
+          return Promise.resolve(null);
+        }
+        return Promise.resolve({ value: readData(k) });
+      },
       callService(domain, service, data) {
         data = data || {};
         for (const eid of ids(data)) {
@@ -249,14 +268,14 @@
 /* dist/home-ring-card.js */
 /*
  * Home Ring card for Home Assistant
- * https://github.com/anchorapp100/home-ring-card  (MIT licence)
+ * https://github.com/magooffm/home-ring-card  (MIT licence)
  *
  * Your home as a ring you drill into: the centre is where you are, the rings around it are floors, rooms,
  * kinds of thing and the things themselves. Tap to go in, tap the centre to come back out, hold to switch,
  * slide on a light to dim it. Everything comes from Home Assistant's own floors, areas and entities, so new
  * devices appear by themselves once they have a room.
  */
-const HOME_RING_VERSION = '1.4.0';
+const HOME_RING_VERSION = '1.5.0';
 
 const HR_CSS = `
 :host{
@@ -329,10 +348,29 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 .hot.picking{animation:none;box-shadow:0 0 0 2px #fff;background:color-mix(in srgb,var(--hc) 18%,rgba(17,25,36,.94));}
 @keyframes hrwiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-1.2deg)}75%{transform:rotate(1.2deg)}}
 @media (prefers-reduced-motion:reduce){ .hot.edit{animation:none;} }
-#custom{display:inline-flex;align-items:center;gap:6px;} #custom[hidden]{display:none;}
-#custom svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
-#custom.on{color:var(--light);}
-.seg:has(> #custom[hidden]){display:none;}
+/* the gear: starts and ends Customise. Beside the top right corner button, or in the ring's own corner on a phone */
+#gear{all:unset;box-sizing:border-box;position:absolute;z-index:3;top:0;right:146px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  background:rgba(17,25,36,.92);border:1px solid rgba(255,255,255,.12);color:var(--muted);transition:color .2s,background .2s,border-color .2s;}
+#gear[hidden]{display:none;}
+#gear svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+#gear.on{color:#0a0f16;background:var(--light);border-color:var(--light);}
+#gear:active{transform:scale(.94);} #gear:focus-visible{box-shadow:0 0 0 2px #fff;}
+#app.nohots #gear{right:0;}
+#ctl .txt{flex:1 1 140px;min-width:0;background:var(--hub);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:16px;}
+#ctl .txt:focus{outline:none;border-color:var(--light);}
+#ctl .seg{margin-top:8px;}
+#ctl .btn.warn{display:inline-flex;align-items:center;gap:7px;color:var(--alert);}
+#ctl .btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+#ctl .erows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;}
+#ctl .erow{display:flex;align-items:stretch;min-width:0;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--line);}
+#ctl .erow.off{border-style:dashed;} #ctl .erow.off .en{opacity:.55;}
+#ctl .erow .en{all:unset;box-sizing:border-box;cursor:pointer;flex:1 1 auto;min-width:0;padding:7px 4px 7px 10px;font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#ctl .erow span.en{cursor:default;}
+#ctl .erow .en small{display:block;font-size:11px;font-weight:650;color:var(--muted);overflow:hidden;text-overflow:ellipsis;}
+#ctl .erow .eye{all:unset;cursor:pointer;flex:0 0 auto;display:grid;place-items:center;width:40px;color:var(--muted);border-left:1px solid var(--line);}
+#ctl .erow .eye svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+#ctl .erow .eye:hover{color:var(--text);} #ctl .erow.off .eye{color:var(--light);}
+#ctl .erow .en:focus-visible,#ctl .erow .eye:focus-visible{box-shadow:0 0 0 2px #fff;border-radius:10px;}
 #ctl .opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px;}
 #ctl .opt{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;min-width:0;padding:8px 9px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:12.5px;font-weight:750;}
 #ctl .opt span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -358,7 +396,8 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;}
 .seg button{all:unset;cursor:pointer;font-size:12px;font-weight:800;color:var(--muted);padding:5px 12px;border-radius:999px;}
 .seg button.on{background:rgba(255,255,255,.11);color:var(--text);}
-#lockseg[hidden],#tidy[hidden]{display:none;}
+#lockseg[hidden],#tidy[hidden],#view[hidden]{display:none;}
+#ring .w.hid path{opacity:.4;stroke-dasharray:5 4;}
 #lock{display:inline-flex;align-items:center;gap:6px;}
 #lock svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 #lock.on{color:var(--light);}
@@ -446,6 +485,7 @@ ha-card.mini{background:transparent;box-shadow:none;border:0;}
   #app:not(.mini) .hot .hi{font-size:12px;gap:5px;} #app:not(.mini) .hot svg{width:18px;height:18px;}
   #app:not(.mini) .hot .hv{font-size:11px;}
   #app:not(.mini) #ringbox{position:relative;inset:auto;width:100%;aspect-ratio:1;}
+  #app:not(.mini) #gear{right:0;width:36px;height:36px;}
   #app:not(.mini) #ctl,#app:not(.mini) #list{overflow:visible;flex:none;}
 }
 @container hr (max-width: 420px){
@@ -465,7 +505,7 @@ const HR_HTML = `
     <div class="hots">
       <button class="hot tl"></button><button class="hot tr"></button><button class="hot bl"></button><button class="hot br"></button>
     </div>
-    <div id="ringbox"><svg id="ring" aria-label="Home ring"></svg><div id="slide"></div><div id="toast" role="status" aria-live="polite"></div></div>
+    <div id="ringbox"><svg id="ring" aria-label="Home ring"></svg><button id="gear" hidden></button><div id="slide"></div><div id="toast" role="status" aria-live="polite"></div></div>
     <div id="wait">Waiting for Home Assistant…</div>
   </div>
   <div id="minibox"></div>
@@ -475,8 +515,8 @@ const HR_HTML = `
       <div id="title">Home</div>
       <div id="summary"></div>
       <div class="tools"><div class="seg" id="mode" role="group" aria-label="Arrange by"><button data-m="rooms">By room</button><button data-m="systems">By system</button></div>
+        <div class="seg" id="view" role="group" aria-label="Show" hidden><button data-v="mine" title="Your setup: hidden things left out, your groups shown">My view</button><button data-v="all" title="Every thing in its real room, with hidden ones dimmed">Everything</button></div>
         <div class="seg" id="lockseg" hidden><button id="lock" aria-pressed="false"></button><button id="tidy" hidden title="Lay the rooms out afresh and lock them there">Re-tidy</button></div>
-        <div class="seg"><button id="custom" hidden></button></div>
         <div id="legend" title="Room colour shows its thermostat's temperature: blue = cold, orange = warm">Cold<i></i>Warm</div></div>
     </div>
     <div class="card" id="ctl"></div>
@@ -580,6 +620,7 @@ function normaliseConfig(c) {
     corners: c.corners || null,
     corners_key: String(c.corners_key || 'home_ring_corners'),
     customise: c.customise !== false,
+    profile_key: String(c.profile_key || 'home_ring_profile'),
     animation_speed: clamp(num(c.animation_speed) ?? 100, 0, 100),
   };
 }
@@ -595,11 +636,13 @@ function createRing(sr, host, CFG) {
   const MINI = CFG.mini;
   if (MINI) { $('app').classList.add('mini'); Q('ha-card').classList.add('mini'); }
   if (CFG.height) $('app').style.setProperty('--hr-height', CFG.height);
-  if (!CFG.hot_buttons) QA('.hot').forEach(b => b.hidden = true);
+  if (!CFG.hot_buttons) { QA('.hot').forEach(b => b.hidden = true); $('app').classList.add('nohots'); }
   if (!CFG.temperature_tint) $('legend').style.display = 'none';
 
   const LS = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
   let MODE = LS.get('homeRingMode') || CFG.mode; if (MODE !== 'systems') MODE = 'rooms';
+  // 'mine' = the Customise setup applied; 'all' = every thing in its real room, nothing hidden (hidden ones dimmed), no groups
+  let VIEW = !MINI && LS.get('homeRingView') === 'all' ? 'all' : 'mine';
   // animation speed, per screen: 0 = instant, 100 = the normal glide (0.75 s). Set in Customise.
   const FULL_MS = 750;
   let SPEED = num(LS.get('homeRingSpeed')) ?? CFG.animation_speed; SPEED = clamp(SPEED, 0, 100);
@@ -696,6 +739,13 @@ function createRing(sr, host, CFG) {
 
   /* ---------- the tree: Home > floors > rooms > kinds > things ---------- */
   let nodes = [], root = null, focus = null, sel = null, hot = null, hoverN = null, H = null, lastStates = null;
+  /* ---------- the setup made on screen with Customise: what is hidden, renamed, moved to another kind, and the corners.
+     hide: 'e:<entity id>', 'd:<device id>', 'a:<area id>', 'f:<floor id>' or 'c:<area id>:<kind>' (one kind in one room)
+     name: the same keys -> the name to show;  cat: entity id -> kind;  nol: lights left out of room and house switching
+     groups: [{ id, name }] = rooms of your own, shown as area 'g:<id>' in a "Groups" segment;  grp: entity id -> group id.
+     A thing in a group leaves its real room in My view; the Everything view shows it back where it really is. */
+  const emptyProfile = () => ({ v: 1, hide: [], name: {}, cat: {}, nol: [], groups: [], grp: {}, corners: null });
+  let PROF = emptyProfile(), HIDE = new Set(), NOL = new Set();
   /* ---------- layout lock: every floor, room, kind and thing keeps its place and size ----------
      A saved layout lists, for every group, its children in order with their sizes, and where each room's centre
      was. While it is locked, known things keep their saved order and size, new ones join the end of their group,
@@ -721,8 +771,12 @@ function createRing(sr, host, CFG) {
   function build(h, ignoreLock) {
     const floors = h.floors || {}, devices = h.devices || {}, ents = h.entities || {}, states = h.states;
     const areas = Object.assign({}, h.areas || {});
-    for (const a of Object.keys(areas)) { const ar = areas[a]; if (CFG.exclude_areas.includes(String(a).toLowerCase()) || CFG.exclude_areas.includes(String(ar.name).toLowerCase())) delete areas[a]; }
+    const raw = VIEW === 'all', gone = k => !raw && HIDE.has(k);
+    for (const a of Object.keys(areas)) { const ar = areas[a]; if (gone('a:' + a) || CFG.exclude_areas.includes(String(a).toLowerCase()) || CFG.exclude_areas.includes(String(ar.name).toLowerCase())) delete areas[a]; }
     areas._energy = { area_id: '_energy', name: 'Energy system', floor_id: null };
+    const GRP = {};
+    if (!raw) for (const g of PROF.groups) { GRP[g.id] = 'g:' + g.id; areas['g:' + g.id] = { area_id: 'g:' + g.id, name: g.name, floor_id: '~groups', virtual: true }; }
+    const place = (eid, area) => GRP[PROF.grp[eid]] || area;
     const flist = Object.values(floors).sort((a, b) => (a.level ?? 99) - (b.level ?? 99) || String(a.name).localeCompare(b.name));
     const byArea = {}, tempBy = {}, devShown = new Set(), left = {};
     const areaOf = r => r && (r.area_id || (r.device_id && devices[r.device_id] && devices[r.device_id].area_id));
@@ -733,10 +787,12 @@ function createRing(sr, host, CFG) {
       if (CFG.exclude(eid, nm)) continue;
       const area = areaOf(r);
       if (!area || !areas[area]) continue;
+      // hidden with Customise: its device counts as shown, so the rest of it does not come back as a slice of its own
+      if (gone('e:' + eid)) { if (r.device_id) devShown.add(r.device_id); continue; }
       // a room's temperature = its thermostat (other temperature sensors are often batteries or device chips)
       if (eid.startsWith('climate.') && !tempBy[area] && num((st.attributes || {}).current_temperature) != null) tempBy[area] = eid;
-      const c = catOf(eid, st);
-      if (c) { if (r.device_id) devShown.add(r.device_id); (byArea[area] = byArea[area] || []).push({ eid, c }); continue; }
+      const c = PROF.cat[eid] || catOf(eid, st);
+      if (c) { if (r.device_id) devShown.add(r.device_id); const at = place(eid, area); if (!gone('c:' + at + ':' + c)) (byArea[at] = byArea[at] || []).push({ eid, c }); continue; }
       // no ring kind of its own: it belongs to its device (or stands alone if it has none)
       if (!CFG.devices || NEVER.includes(eid.split('.')[0])) continue;
       const key = r.device_id || '~' + eid; (left[key] = left[key] || { area, eids: [] }).eids.push(eid);
@@ -749,31 +805,37 @@ function createRing(sr, host, CFG) {
       if (dev && devShown.has(key)) { READ[key] = L.eids; continue; }
       const devName = dev ? (dev.name_by_user || dev.name || '') : '';
       if (dev && devName && CFG.exclude('', devName)) continue;
+      if (dev && gone('d:' + key)) continue;
       const primary = pickPrimary(L.eids, states); if (!primary) continue;
       const c = L.eids.every(e => /^(sensor|binary_sensor|event)\./.test(e)) ? 'readings' : 'other';
-      (byArea[L.area] = byArea[L.area] || []).push({ eid: primary, c, dev: dev ? key : null, devName });
+      const at = place(primary, L.area);
+      if (gone('c:' + at + ':' + c)) continue;
+      (byArea[at] = byArea[at] || []).push({ eid: primary, c, dev: dev ? key : null, devName });
       if (dev) READ[key] = L.eids;
     }
     const sysMode = MODE === 'systems' && !MINI;
     if (sysMode) for (const e of CFG.energy) {
-      if (!states[e.entity]) continue;
+      if (!states[e.entity] || gone('e:' + e.entity)) continue;
       const area = areaOf(ents[e.entity]), a = area && areas[area] ? area : '_energy';
       (byArea[a] = byArea[a] || []).push({ eid: e.entity, c: 'power' });
     }
     const mk = (kind, name, extra) => Object.assign({ kind, name, kids: [], parent: null }, extra || {});
     const entNode = (x, a, hue) => {
       const e = x.c === 'power' ? ENERGY_BY[x.eid] : null;
-      return mk('ent', e && e.name ? e.name : shortName(states[x.eid], x.eid, areas[a].name, x.devName),
-        { hue, cat: x.c, sc: e ? (e.color || ENERGY_COLOURS[e.kind] || ENERGY_COLOURS.other) : CATS[x.c].sc, eid: x.eid, dev: x.dev || null });
+      const auto = e && e.name ? e.name : shortName(states[x.eid], x.eid, areas[a].name, x.devName);
+      return mk('ent', PROF.name['e:' + x.eid] || auto,
+        { auto, hid: raw && (HIDE.has('e:' + x.eid) || (!!x.dev && HIDE.has('d:' + x.dev))), hue, cat: x.c, sc: e ? (e.color || ENERGY_COLOURS[e.kind] || ENERGY_COLOURS.other) : CATS[x.c].sc, eid: x.eid, dev: x.dev || null });
     };
     const R = mk('home', 'Home');
-    const byName = (a, b) => areas[a].name.localeCompare(areas[b].name);
+    const aName = a => PROF.name['a:' + a] || areas[a].name;
+    const byName = (a, b) => aName(a).localeCompare(aName(b));
     if (sysMode) {
       for (const sy of SYSTEMS) {
-        const sn = mk('floor', sy.name, { hue: sy.hue, id: 'sys:' + sy.id, sys: sy.id });
+        if (gone('f:sys:' + sy.id)) continue;
+        const sn = mk('floor', sy.name, { hid: raw && HIDE.has('f:sys:' + sy.id), hue: sy.hue, id: 'sys:' + sy.id, sys: sy.id });
         const areaIds = Object.keys(byArea).filter(a => byArea[a].some(x => sy.cats.includes(x.c))).sort(byName);
         for (const a of areaIds) {
-          const an = mk('area', areas[a].name, { hue: sy.hue, id: a, tempEid: tempBy[a] });
+          const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue: sy.hue, id: a, tempEid: tempBy[a] });
           byArea[a].filter(x => sy.cats.includes(x.c)).map(x => entNode(x, a, sy.hue))
             .sort((p, q) => p.name.localeCompare(q.name)).forEach(e => { e.parent = an; an.kids.push(e); });
           an.parent = sn; sn.kids.push(an);
@@ -782,10 +844,10 @@ function createRing(sr, host, CFG) {
       }
     } else {
       const roomNode = (a, hue) => {
-        const an = mk('area', areas[a].name, { hue, id: a, tempEid: tempBy[a] });
+        const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue, id: a, tempEid: tempBy[a] });
         for (const c of CAT_ORDER) {
           const items = byArea[a].filter(x => x.c === c); if (!items.length) continue;
-          const cn = mk('cat', CATS[c].name, { hue, cat: c, sc: CATS[c].sc });
+          const cn = mk('cat', CATS[c].name, { hid: raw && HIDE.has('c:' + a + ':' + c), hue, cat: c, sc: CATS[c].sc });
           items.map(x => entNode(x, a, hue)).sort((p, q) => p.name.localeCompare(q.name)).forEach(e => { e.parent = cn; cn.kids.push(e); });
           cn.parent = an; an.kids.push(cn);
         }
@@ -793,21 +855,23 @@ function createRing(sr, host, CFG) {
       };
       const roomsOn = fid => Object.keys(areas).filter(a => a !== '_energy' && (areas[a].floor_id || null) === fid && byArea[a]).sort(byName);
       if (!flist.length) {                                    // no floors set up: the rooms go straight round the house
-        roomsOn(null).forEach((a, i) => { const an = roomNode(a, FLOOR_HUES[i % FLOOR_HUES.length]); an.parent = R; R.kids.push(an); });
+        roomsOn(null).concat(roomsOn('~groups')).forEach((a, i) => { const an = roomNode(a, FLOOR_HUES[i % FLOOR_HUES.length]); an.parent = R; R.kids.push(an); });
       } else {
         const groups = flist.map((f, i) => ({ f, hue: FLOOR_HUES[i % FLOOR_HUES.length] }));
         groups.push({ f: { floor_id: null, name: 'Other rooms' }, hue: '#8a97a6' });
+        groups.push({ f: { floor_id: '~groups', name: 'Groups' }, hue: '#d98ac0', fixed: true });      // rooms of your own
         for (const g of groups) {
-          const fn = mk('floor', g.f.name, { hue: g.hue, id: g.f.floor_id });
+          if (gone('f:' + (g.f.floor_id ?? '_'))) continue;
+          const fn = mk('floor', (g.f.floor_id && PROF.name['f:' + g.f.floor_id]) || g.f.name, { auto: g.f.name, hid: raw && HIDE.has('f:' + (g.f.floor_id ?? '_')), fixed: !!g.fixed, hue: g.hue, id: g.f.floor_id });
           for (const a of roomsOn(g.f.floor_id || null)) { const an = roomNode(a, g.hue); an.parent = fn; fn.kids.push(an); }
           if (fn.kids.length) { fn.parent = R; R.kids.push(fn); }
         }
       }
     }
-    const snap = !ignoreLock && CFG.layout_lock && LAYOUT && LAYOUT.modes && LAYOUT.modes[sysMode ? 'systems' : 'rooms'];
+    const snap = !ignoreLock && !raw && CFG.layout_lock && LAYOUT && LAYOUT.modes && LAYOUT.modes[sysMode ? 'systems' : 'rooms'];
     if (snap && snap.order) applyLock(R, snap.order);
     nodes = [];
-    (function walk(n, d) { n.depth = d; n.i = nodes.length; nodes.push(n); n.kids.forEach((k, j) => { k.alt = j % 2 === 1; walk(k, d + 1); }); })(R, 0);
+    (function walk(n, d) { if (n.parent && n.parent.hid) n.hid = true; n.depth = d; n.i = nodes.length; nodes.push(n); n.kids.forEach((k, j) => { k.alt = j % 2 === 1; walk(k, d + 1); }); })(R, 0);
     (function weigh(n) { n.w = n.kids.length ? n.kids.reduce((s, k) => s + weigh(k), 0) : 1; return n.w; })(R);
     (function part(n, x0, x1) {   // sizes grow with the number of things, gently (a locked layout keeps its saved sizes)
       n.x0 = x0; n.x1 = x1; const ws = n.kids.map(k => k.lw ?? Math.pow(k.w, .6)), t = ws.reduce((a, b) => a + b, 0) || 1; let x = x0;
@@ -838,7 +902,7 @@ function createRing(sr, host, CFG) {
       || eids.find(x => x.startsWith('sensor.') && ok(x) && num(states[x].state) != null) || eids.find(x => !x.startsWith('event.') && ok(x)) || eids[0];
   }
   const devOf = n => n.dev || ((H && H.entities && H.entities[n.eid]) || {}).device_id || null;
-  const findSame = n => n && nodes.find(m => m.kind === n.kind && m.name === n.name && (m.eid || m.id || '') === (n.eid || n.id || '') && (m.parent && n.parent ? m.parent.name === n.parent.name : true));
+  const findSame = n => { if (!n) return null; const k = pathKey(n); return nodes.find(m => m.kind === n.kind && pathKey(m) === k) || null; };   // by id, so a rename keeps your place
 
   /* ---------- geometry + drawing ---------- */
   const svg = $('ring'); let gW, gL, gC, gS, defs, S = 800, B = [], RMAX = 0, SCN = null, anim = null;
@@ -910,7 +974,7 @@ function createRing(sr, host, CFG) {
     const act = n.kind !== 'ent' ? activeCount(n) > 0 : isActive(n.eid, states()[n.eid]);
     n.g.classList.toggle('active', act && n.kind !== 'floor'); if (n.sc) n.g.style.setProperty('--sc', n.sc);
     n.g.classList.toggle('pulse', n.kind === 'ent' && n.cat === 'media' && act);
-    n.g.classList.toggle('sel', n === sel);
+    n.g.classList.toggle('sel', n === sel || n === editN); n.g.classList.toggle('hid', !!n.hid);
   }
 
   /* ---------- labels ---------- */
@@ -965,7 +1029,7 @@ function createRing(sr, host, CFG) {
       (sub ? `<text class="lb cs" text-anchor="middle" dominant-baseline="central" y="13">${esc(fitText(sub, 12, r * 1.7) || '')}</text>` : '') +
       (focus.kind !== 'home' ? `<text class="lb cs" text-anchor="middle" dominant-baseline="central" y="${f(r * .62)}">↑ back</text>` : '');
     gC.appendChild(c);
-    c.querySelector('circle').addEventListener('click', () => { if (focus.parent) setFocus(focus.parent); });
+    c.querySelector('circle').addEventListener('click', () => { if (EDIT) { editPick(focus); return; } if (focus.parent) setFocus(focus.parent); });
     drawScenes();
   }
   function homeSummary() { const on = leaves(root).filter(e => e.cat === 'lights' && isActive(e.eid, states()[e.eid])).length; return on + ' light' + (on === 1 ? '' : 's') + ' on'; }
@@ -999,7 +1063,7 @@ function createRing(sr, host, CFG) {
       const d = document.createElementNS(NS, 'path'); d.id = PFX + 'sc' + i; d.setAttribute('d', `M${f(x0)},${f(y0)}A${f(rm)},${f(rm)} 0 0 ${bottom ? 0 : 1} ${f(x1)},${f(y1)}`); defs.appendChild(d);
       const label = fitText(sceneName(eid), 12.5, (a1 - a0) * rm - 14);
       if (label) { const t = document.createElementNS(NS, 'g'); t.innerHTML = `<text dominant-baseline="central"><textPath href="#${PFX}sc${i}" startOffset="50%" text-anchor="middle">${esc(label)}</textPath></text>`; g.appendChild(t); }
-      const run = () => { call('scene', 'turn_on', { entity_id: eid }); buzz(); g.classList.add('flash'); setTimeout(() => g.classList.remove('flash'), 600); toast(sceneName(eid) + ' scene on'); };
+      const run = () => { if (EDIT) { toast('Scenes run again once you tap Done'); return; } call('scene', 'turn_on', { entity_id: eid }); buzz(); g.classList.add('flash'); setTimeout(() => g.classList.remove('flash'), 600); toast(sceneName(eid) + ' scene on'); };
       g.addEventListener('click', run);
       g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); run(); } });
       gS.appendChild(g);
@@ -1010,6 +1074,7 @@ function createRing(sr, host, CFG) {
   function setFocus(n) {
     if (!n || n.kind === 'ent') return;
     if (sel && !leaves(n).includes(sel)) sel = null;
+    editN = null;
     focus = n; hover(null); side(); controls(); geom(n);
     const to = { x0: n.x0, x1: n.x1, d: n.depth }, from = { ...view };
     cancelAnimationFrame(anim);
@@ -1040,7 +1105,19 @@ function createRing(sr, host, CFG) {
   const canToggle = n => n && n.kind === 'ent' && ['light', 'switch', 'fan', 'media_player', 'input_boolean'].includes(domOf(n)) && !unavail(states()[n.eid]);
   const canDim = n => { if (!n || n.kind !== 'ent' || domOf(n) !== 'light') return false; const st = states()[n.eid]; return !unavail(st) && ((st.attributes || {}).supported_color_modes || []).some(m => m !== 'onoff'); };
   const briOf = n => { const st = states()[n.eid], a = (st && st.attributes) || {}; return st && st.state === 'on' ? (a.brightness != null ? Math.round(a.brightness / 2.55) : 100) : 0; };
-  function select(n) { sel = n; hot = null; nodes.forEach(paint); controls(); hotBtns(); }
+  function select(n) {
+    sel = n; hot = null; editN = null; if (editPos) { editPos = null; renderCorners(); }
+    nodes.forEach(paint); controls(); hotBtns(); if (EDIT) reveal();
+  }
+  // Customise: the view stays where it is, and whatever you tap is the thing being changed (the centre = where you are)
+  function editPick(n) {
+    newGroup = false;
+    if (n && n.kind === 'ent') { select(n); return; }
+    sel = null; editPos = null; editN = n && n !== focus ? n : null;
+    nodes.forEach(paint); renderCorners(); controls(); hotBtns(); reveal();
+  }
+  // Customise on a phone: the card is under the ring, so bring it into view
+  function reveal() { try { $('ctl').scrollIntoView({ block: 'nearest', behavior: REDUCED ? 'auto' : 'smooth' }); } catch (e) {} }
   function buzz() { try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} }
   function flash(n) { if (!n.g) return; n.g.classList.add('flash'); setTimeout(() => n.g && n.g.classList.remove('flash'), 450); }
   function toggleThing(n) {
@@ -1051,7 +1128,7 @@ function createRing(sr, host, CFG) {
   let toastT = null;
   function toast(s) { const t = $('toast'); t.textContent = s; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1900); }
   // hold a room (or its Lights) = all its lights off if any is on, otherwise all on
-  const roomLights = n => leaves(n).filter(e => e.cat === 'lights' && !unavail(states()[e.eid]) && !CFG.lights_exclude(e.eid, e.name));
+  const roomLights = n => leaves(n).filter(e => e.cat === 'lights' && !unavail(states()[e.eid]) && !CFG.lights_exclude(e.eid, e.name) && !NOL.has(e.eid));
   function switchLights(list, turnOn) {
     for (const d of ['light', 'switch']) { const ids = list.filter(e => domOf(e) === d).map(e => e.eid); if (ids.length) call(d, turnOn ? 'turn_on' : 'turn_off', { entity_id: ids }); }
   }
@@ -1088,6 +1165,7 @@ function createRing(sr, host, CFG) {
       const was = safeSeen[e.eid]; safeSeen[e.eid] = st.last_changed;
       if (quiet || !CFG.safety_alerts || MINI || was === undefined || was === st.last_changed || st.state !== 'on') continue;
       for (let c = e; c; c = c.parent) if (c === e || c.kind === 'area') pulse(c);
+      if (EDIT) { EDIT = false; editPos = null; editN = null; $('app').classList.remove('editing'); renderCorners(); }   // an alarm ends Customise
       sel = e; hot = null; nodes.forEach(paint); controls(); hotBtns();
       try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (x) {}
       toast((SAFETY_LABEL[(st.attributes || {}).device_class] || 'Alarm') + ' · ' + roomName(e));
@@ -1102,6 +1180,7 @@ function createRing(sr, host, CFG) {
     press.timer = setTimeout(() => {
       if (!press || press.sliding) return;
       press.held = true;
+      if (EDIT) return;                                     // Customise: a hold is just a tap
       if (canToggle(n)) { toggleThing(n); select(n); }
       else if (n.kind === 'ent') { buzz(); select(n); }
       else if (n.kind === 'area' || (n.kind === 'cat' && n.cat === 'lights')) toggleRoomLights(n);
@@ -1113,7 +1192,7 @@ function createRing(sr, host, CFG) {
     const dx = e.clientX - press.x, dy = e.clientY - press.y;
     if (!press.sliding && Math.hypot(dx, dy) > MOVE_PX) {
       clearTimeout(press.timer);
-      if (!canDim(press.n)) { press = null; return; }
+      if (EDIT || !canDim(press.n)) { press = null; return; }
       press.sliding = true; press.bri0 = briOf(press.n);
       try { svg.setPointerCapture(press.id); } catch (_) {}
       select(press.n);
@@ -1127,6 +1206,7 @@ function createRing(sr, host, CFG) {
       if (p.bri != null) { if (p.bri <= 0) call('light', 'turn_off', { entity_id: p.n.eid }); else call('light', 'turn_on', { entity_id: p.n.eid, brightness_pct: p.bri }); buzz(); }
       return;
     }
+    if (EDIT) { editPick(p.n); return; }
     if (p.held) return;
     if (p.n.kind === 'ent') select(p.n); else setFocus(p.n);
   });
@@ -1134,6 +1214,7 @@ function createRing(sr, host, CFG) {
   svg.addEventListener('pointerleave', () => { if (!press) hover(null); });
   svg.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return; const n = nodeOf(e.target); if (!n) return; e.preventDefault();
+    if (EDIT) { editPick(n); return; }
     if (n.kind === 'ent') select(n); else setFocus(n);
   });
 
@@ -1141,7 +1222,7 @@ function createRing(sr, host, CFG) {
   function crumbs() {
     const path = []; for (let c = focus; c; c = c.parent) path.unshift(c);
     $('crumbs').innerHTML = path.map((c, i) => i === path.length - 1 ? `<span class="cur">${esc(c.name)}</span>` : `<button data-i="${c.i}">${esc(c.name)}</button><span class="sep">›</span>`).join('');
-    $('crumbs').querySelectorAll('button').forEach(b => b.onclick = () => setFocus(nodes[+b.dataset.i]));
+    $('crumbs').querySelectorAll('button').forEach(b => b.onclick = () => { if (EDIT) { toast('Tap the tick first to move around'); return; } setFocus(nodes[+b.dataset.i]); });
   }
   const MINI_LINES = [['lights', 'lights on', 'no lights on'], ['heating', 'heating', 'heating idle'], ['media', 'playing', 'nothing playing'],
     ['sensors', 'doors & motion', 'doors closed, no motion'], ['plugs', 'plugs on', 'plugs off']];
@@ -1160,7 +1241,7 @@ function createRing(sr, host, CFG) {
     const off = L.filter(e => unavail(states()[e.eid])).length;
     $('summary').innerHTML = (on.length ? on.join(' · ') + ' on' : 'Nothing on') + ` · ${L.length} thing${L.length === 1 ? '' : 's'}` + (off ? ` · <span style="color:var(--alert)">${off} unavailable</span>` : '');
     $('mode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === MODE));
-    lockUi();
+    lockUi(); viewUi();
     $('legend').style.display = CFG.temperature_tint && (focus.kind === 'home' || focus.kind === 'floor') ? '' : 'none';
     // the list: rooms for the house and floors, things for a room or kind (By system at home: the systems)
     const sysHome = MODE === 'systems' && focus.kind === 'home';
@@ -1198,7 +1279,8 @@ function createRing(sr, host, CFG) {
     if (MINI) return;
     $('list').style.display = sel || hot || EDIT ? 'none' : '';
     if (EDIT && editPos) { chooserCard(el); return; }
-    if (EDIT) { settingsCard(el); return; }
+    if (EDIT && sel) { thingEdit(el); return; }
+    if (EDIT) { groupEdit(el); return; }
     if (hot && !sel) { hotCard(el); return; }
     if (!sel) { el.innerHTML = ''; return; }
     const eid = sel.eid, st = states()[eid], d = eid.split('.')[0], a = (st && st.attributes) || {}, act = isActive(eid, st);
@@ -1211,7 +1293,7 @@ function createRing(sr, host, CFG) {
       h += `<div class="row"><button class="btn${act ? ' on' : ''}" data-a="toggle">${act ? 'Turn off' : 'Turn on'}</button>
         ${dim ? `<input type="range" min="1" max="100" step="1" value="${act && a.brightness ? Math.round(a.brightness / 2.55) : 1}" data-a="bri" aria-label="Brightness"><span class="pv">${act && a.brightness ? Math.round(a.brightness / 2.55) + '%' : 'off'}</span>` : ''}</div>`;
       if (modes.includes('color_temp') && a.min_color_temp_kelvin) {
-        h += `<div class="lbl">Colour temperature</div><div class="row"><input class="ct" type="range" min="${a.min_color_temp_kelvin}" max="${a.max_color_temp_kelvin}" step="50"
+        h += `<div class="lbl">Colour temperature</div><div class="row"><input class="ct" type="range" min="${esc(a.min_color_temp_kelvin)}" max="${esc(a.max_color_temp_kelvin)}" step="50"
           value="${a.color_temp_kelvin || Math.round((a.min_color_temp_kelvin + a.max_color_temp_kelvin) / 2)}" data-a="ct" aria-label="Colour temperature"><span class="pv">${a.color_temp_kelvin ? a.color_temp_kelvin + ' K' : ''}</span></div>`;
       }
       if (modes.some(m => ['hs', 'rgb', 'rgbw', 'rgbww', 'xy'].includes(m))) {
@@ -1245,14 +1327,14 @@ function createRing(sr, host, CFG) {
       if ((a.source_list || []).length && a.source_list.length <= 40) h += `<div class="lbl">Source</div><select data-a="source">${a.source_list.map(x => `<option${x === a.source ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
     } else if (d === 'cover') {
       h += `<div class="row"><button class="btn" data-a="open">Open</button><button class="btn" data-a="stop">Stop</button><button class="btn" data-a="shut">Close</button></div>`;
-      if (a.current_position != null) h += `<div class="row"><input type="range" min="0" max="100" value="${a.current_position}" data-a="pos" aria-label="Position"><span class="pv">${a.current_position}%</span></div>`;
+      if (a.current_position != null) h += `<div class="row"><input type="range" min="0" max="100" value="${esc(a.current_position)}" data-a="pos" aria-label="Position"><span class="pv">${esc(a.current_position)}%</span></div>`;
     } else if (d === 'lock') {
       const locked = st.state === 'locked';
       h += `<div class="row"><button class="btn${locked ? ' on' : ''}" data-a="lock">Lock</button><button class="btn" data-a="confirm" data-v="unlock">Unlock…</button>${a.supported_features & 1 ? '<button class="btn" data-a="confirm" data-v="open">Open…</button>' : ''}</div>
         <div class="note">Unlocking asks you to tap twice${a.code_format ? ', and your lock needs its code: use More controls' : ''}.</div>`;
     } else if (d === 'valve') {
       h += `<div class="row"><button class="btn${act ? ' on' : ''}" data-a="vopen">Open</button><button class="btn" data-a="vclose">Close</button>${a.current_position != null ? '<button class="btn" data-a="vstop">Stop</button>' : ''}</div>`;
-      if (a.current_position != null) h += `<div class="row"><input type="range" min="0" max="100" value="${a.current_position}" data-a="vpos" aria-label="Position"><span class="pv">${a.current_position}%</span></div>`;
+      if (a.current_position != null) h += `<div class="row"><input type="range" min="0" max="100" value="${esc(a.current_position)}" data-a="vpos" aria-label="Position"><span class="pv">${esc(a.current_position)}%</span></div>`;
     } else if (d === 'vacuum' || d === 'lawn_mower') {
       h += `<div class="row"><button class="btn${act ? ' on' : ''}" data-a="vstart">Start</button><button class="btn" data-a="vpause">Pause</button><button class="btn" data-a="vdock">Dock</button></div>
         <div class="kvs">${kv('Battery', a.battery_level != null ? esc(a.battery_level) + '%' : null)}${kv('Fan speed', a.fan_speed ? esc(a.fan_speed) : null)}</div>`;
@@ -1269,7 +1351,7 @@ function createRing(sr, host, CFG) {
     } else if ((d === 'select' || d === 'input_select') && (a.options || []).length <= 60) {
       h += `<select data-a="opt">${(a.options || []).map(x => `<option${x === st.state ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
     } else if ((d === 'number' || d === 'input_number') && a.min != null && a.max != null) {
-      h += `<div class="row"><input type="range" min="${a.min}" max="${a.max}" step="${a.step || 1}" value="${esc(st.state)}" data-a="num" aria-label="${esc(sel.name)}"><span class="pv">${esc(st.state)}${a.unit_of_measurement ? ' ' + esc(a.unit_of_measurement) : ''}</span></div>`;
+      h += `<div class="row"><input type="range" min="${esc(a.min)}" max="${esc(a.max)}" step="${esc(a.step || 1)}" value="${esc(st.state)}" data-a="num" aria-label="${esc(sel.name)}"><span class="pv">${esc(st.state)}${a.unit_of_measurement ? ' ' + esc(a.unit_of_measurement) : ''}</span></div>`;
     } else if (d === 'alarm_control_panel') {
       h += `<div class="row"><button class="btn" data-a="more">Open the keypad</button></div>`;
     } else if (d === 'camera' && a.entity_picture) {
@@ -1389,7 +1471,7 @@ function createRing(sr, host, CFG) {
 
   /* ---------- corner buttons: tap = its card on the right, hold = its quick action ----------
      Each corner can be any of the kinds below, a room shortcut ("room:<area id>"), or empty. Choose them with
-     Customise in the panel (saved in Home Assistant for every screen) or with `corners:` in the card's YAML.
+     Customise (the gear; saved with the rest of the setup) or with `corners:` in the card's YAML.
      Cameras: stills; opens by itself when a doorbell rings.   Lights: every light; hold = all off, or all on.
      Alarm: arm from here when no code is needed to arm.         Heating: thermostats -/+ and boiler modes; hold = your mode.
      TV & music: what's playing; hold = pause everything.        Scenes: run one.
@@ -1409,7 +1491,10 @@ function createRing(sr, host, CFG) {
     plugs: '<path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v4"/>',
     room: '<path d="M3.5 11.5L12 4l8.5 7.5M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>',
     none: '<path d="M12 6v12M6 12h12"/>',
-    pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    eye: '<path d="M1.5 12s4-7.5 10.5-7.5S22.5 12 22.5 12s-4 7.5-10.5 7.5S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeoff: '<path d="M1.5 12s4-7.5 10.5-7.5S22.5 12 22.5 12s-4 7.5-10.5 7.5S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 3.5l16 17"/>',
   };
   const svgOf = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${IC[k] || IC.none}</svg>`;
   const KINDS = {
@@ -1424,7 +1509,7 @@ function createRing(sr, host, CFG) {
   const DEFAULT_CORNERS = ['cams', 'lights', 'alarm', 'heat'];
   const validCorner = k => typeof k === 'string' && (KINDS[k] || /^room:.+/.test(k));
   const cleanCorners = v => Array.isArray(v) && v.length === 4 && v.every(validCorner) ? v.slice() : null;
-  let CORNERS = cleanCorners(CFG.corners) || DEFAULT_CORNERS.slice(), EDIT = false, editPos = null;
+  let CORNERS = cleanCorners(CFG.corners) || DEFAULT_CORNERS.slice(), EDIT = false, editPos = null, editN = null, legacyCorners = null;
   const kindOf = pos => CORNERS[POS.indexOf(pos)];
   const roomIdOf = k => k.startsWith('room:') ? k.slice(5) : null;
   const roomNodeOf = id => nodes.find(n => n.kind === 'area' && n.id === id);
@@ -1470,9 +1555,10 @@ function createRing(sr, host, CFG) {
       b.setAttribute('aria-label', EDIT ? `Change the ${POS_NAME[pos].toLowerCase()} button (${kindName(k)})` : kindName(k));
       b.innerHTML = `<span class="hi">${svgOf(rid ? 'room' : k)}<span class="hn">${esc(kindName(k))}</span><i class="md"></i></span><span class="hv"></span>`;
     }
-    const cb = $('custom'); cb.hidden = !CFG.hot_buttons || !CFG.customise;
-    cb.classList.toggle('on', EDIT); cb.innerHTML = svgOf('pen') + (EDIT ? 'Done' : 'Customise');
-    cb.title = EDIT ? 'Finish changing the corner buttons' : 'Choose what the four corner buttons do';
+    const gb = $('gear'); gb.hidden = !CFG.customise;
+    gb.classList.toggle('on', EDIT); gb.innerHTML = svgOf(EDIT ? 'check' : 'gear');
+    gb.title = EDIT ? 'Done' : 'Customise: hide, rename and move things, and choose the corner buttons';
+    gb.setAttribute('aria-label', EDIT ? 'Finish customising' : 'Customise'); gb.setAttribute('aria-pressed', EDIT);
   }
   function hotBtns() {
     if (MINI || !root || !CFG.hot_buttons) return;
@@ -1682,27 +1768,192 @@ function createRing(sr, host, CFG) {
     });
   }
 
-  /* ---------- Customise: choose what each corner does ---------- */
+  /* ---------- Customise (the gear): hide, rename and move things, and choose what each corner does ----------
+     The view stays where it is: tap any floor, room, kind or thing on it to change that one, or the centre for the place
+     you are in. To change what is inside a room, tap the tick, go into the room and tap the gear again.
+     Nothing is switched while Customise is on. Every change is saved at once, for the screens chosen under "This setup is for". */
   function setEdit(on) {
-    EDIT = on; editPos = null; hot = null;
-    if (sel) { sel = null; nodes.forEach(paint); }
-    renderCorners(); controls(); hotBtns();
+    EDIT = on; editPos = null; editN = null; hot = null;
+    $('app').classList.toggle('editing', on);
+    nodes.forEach(paint); renderCorners(); controls(); hotBtns();
+    if (on) toast('Tap anything to change it');
   }
-  function pickCorner(pos) { editPos = editPos === pos ? null : pos; renderCorners(); controls(); hotBtns(); }
-  // Customise with no corner picked: what it does, and this screen's animation speed
-  function settingsCard(el) {
+  function pickCorner(pos) {
+    editPos = editPos === pos ? null : pos; sel = null; editN = null;
+    nodes.forEach(paint); renderCorners(); controls(); hotBtns(); if (editPos) reveal();
+  }
+  const hideKeyOf = n => n.kind === 'ent' ? (n.dev ? 'd:' + n.dev : 'e:' + n.eid) : n.kind === 'cat' ? 'c:' + n.parent.id + ':' + n.cat : n.kind === 'area' ? 'a:' + n.id : 'f:' + (n.id ?? '_');
+  const nameKeyOf = n => (n.kind === 'ent' ? 'e:' + n.eid : n.kind === 'area' ? 'a:' + n.id : 'f:' + n.id);
+  const canHide = n => n.kind !== 'home' && n.id !== '_energy' && !n.virtual && !n.fixed;
+  const canRename = n => n.kind === 'ent' || (n.kind === 'area' && n.id !== '_energy') || (n.kind === 'floor' && n.id != null && !n.sys && !n.fixed);
+  const isHid = n => HIDE.has(hideKeyOf(n));                 // only seen in the Everything view, where hidden things stay on the ring
+  const toggleHide = n => isHid(n) ? showKey(hideKeyOf(n), n.name) : hideNode(n);
+  const realRoom = eid => { const r = (H.entities || {})[eid], a = r && (r.area_id || (r.device_id && H.devices && H.devices[r.device_id] && H.devices[r.device_id].area_id)); return (a && H.areas && H.areas[a] && H.areas[a].name) || 'its room'; };
+  let newGroup = false;                                      // the thing card is asking for a new group's name
+  function setGroup(n, gid, name) {
+    change(p => { if (!gid) { delete p.grp[n.eid]; return; } if (name) p.groups.push({ id: gid, name }); p.grp[n.eid] = gid; },
+      n.name + (gid ? ': in ' + (name || (PROF.groups.find(g => g.id === gid) || {}).name) : ': back in ' + realRoom(n.eid)));
+  }
+  function deleteGroup(t) {
+    const gid = t.id.slice(2); if (focus === t) focus = t.parent || root; editN = null; sel = null;
+    change(p => { p.groups = p.groups.filter(g => g.id !== gid); for (const e of Object.keys(p.grp)) if (p.grp[e] === gid) delete p.grp[e]; }, t.name + ' removed · its things are back in their rooms');
+  }
+  const KIND_WORD = { floor: 'Floor', area: 'Room', cat: 'Kind', ent: 'Thing' };
+  const SAVED = { all: '', user: '', here: '', 'user!': ' · saved for your account', 'here!': ' · saved on this screen' };
+  // change the setup: shown at once, then saved
+  function change(mut, msg) {
+    const next = JSON.parse(JSON.stringify(PROF)); mut(next);
+    next.groups = next.groups.filter(g => Object.values(next.grp).includes(g.id));      // a group with nothing in it is gone
+    saveProfile(next).then(where => { if (msg) toast(msg + (SAVED[where] || '')); });
+    buzz();
+  }
+  function hideNode(n) {
+    const k = hideKeyOf(n), name = n.kind === 'cat' ? n.name + ' in ' + n.parent.name : n.name;
+    if (VIEW !== 'all') {                                   // (Everything keeps it on the ring, dimmed)
+      if (n === focus) focus = n.parent || root;            // hiding where you are: step back out
+      if (sel && (sel === n || leaves(n).includes(sel))) sel = null;
+      editN = null;
+    }
+    change(p => { if (!p.hide.includes(k)) p.hide.push(k); }, name + ' hidden');
+  }
+  const showKey = (k, name) => change(p => { p.hide = p.hide.filter(x => x !== k); }, name + ' is back');
+  function rename(n, v) {
+    v = String(v || '').trim().slice(0, 40); const k = nameKeyOf(n);
+    if (n.virtual) {                                        // a group's name is its own
+      if (!v || v === n.name) return false; const gid = n.id.slice(2);
+      change(p => { const g = p.groups.find(x => x.id === gid); if (g) g.name = v; }, 'Renamed: ' + v); return true;
+    }
+    if (v === n.name || (!v && !PROF.name[k])) return false;
+    change(p => { if (!v || v === n.auto) delete p.name[k]; else p.name[k] = v; }, !v || v === n.auto ? 'Name put back: ' + n.auto : 'Renamed: ' + v);
+    return true;
+  }
+  // everything hidden with Customise, with where it belongs (so each room and floor can list its own)
+  function hiddenList() {
+    const ents = H.entities || {}, devs = H.devices || {}, areas = H.areas || {}, floors = H.floors || {};
+    return PROF.hide.map(k => {
+      const t = k[0], id = k.slice(2); let name = id, area = null, floor, what = 'Thing';
+      if (t === 'e') { const r = ents[id]; name = PROF.name[k] || sceneName(id); area = (r && (r.area_id || (r.device_id && devs[r.device_id] && devs[r.device_id].area_id))) || null; }
+      else if (t === 'd') { const dv = devs[id]; name = dv ? (dv.name_by_user || dv.name || id) : id; area = dv ? dv.area_id : null; }
+      else if (t === 'c') { const i = id.lastIndexOf(':'), c = id.slice(i + 1); area = id.slice(0, i); name = (CATS[c] || {}).name || c; what = 'Kind'; }
+      else if (t === 'a') { name = PROF.name[k] || (areas[id] ? areas[id].name : id); floor = areas[id] ? areas[id].floor_id || null : undefined; what = 'Room'; }
+      else { const sy = SYSTEMS.find(x => 'sys:' + x.id === id); name = sy ? sy.name : id === '_' ? 'Other rooms' : (floors[id] || {}).name || id; what = sy ? 'System' : 'Floor'; }
+      if (area) floor = areas[area] ? areas[area].floor_id || null : undefined;
+      return { k, t, name, area, floor, where: area && areas[area] ? PROF.name['a:' + area] || areas[area].name : what };
+    });
+  }
+  function hiddenUnder(t) {
+    const L = hiddenList();
+    if (t.kind === 'home') return L;
+    if (t.kind === 'floor') return t.sys ? [] : L.filter(x => x.t !== 'f' && x.floor === (t.id ?? null));
+    const a = t.kind === 'area' ? t.id : t.parent.id;
+    return L.filter(x => x.t !== 'a' && x.t !== 'f' && x.area === a);
+  }
+  const SCOPE_NAME = { all: 'Every screen', user: 'My account', here: 'This screen' };
+  const SCOPE_NOTE = {
+    all: 'One setup shared by every screen and everyone.',
+    user: 'Your own setup, on every device you sign in on. Everyone else keeps theirs.',
+    here: 'This screen has its own setup, so a phone and a wall tablet can each show what suits them.',
+  };
+  const scopeNote = () => 'Saved for: ' + SCOPE_NAME[scopeOf()].toLowerCase() + '.';
+  // a text box that is safe to type in: Home Assistant's keyboard shortcuts stay out of it, Enter saves
+  function wireName(el, n) {
+    const inp = el.querySelector('[data-a="name"]'); if (!inp) return;
+    inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = n.name; inp.blur(); } });
+    inp.onchange = () => { if (!rename(n, inp.value)) inp.value = n.name; };
+    const b = el.querySelector('[data-a="save"]'); if (b) b.onclick = () => rename(n, inp.value);
+  }
+  const nameRow = n => `<div class="lbl">Name on the ring</div>
+      <div class="row"><input class="txt" type="text" data-a="name" value="${esc(n.name)}" placeholder="${esc(n.auto || n.name)}" maxlength="40" autocomplete="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" aria-label="Name on the ring"><button class="btn" data-a="save">Save</button></div>` +
+      (n.auto && n.auto !== n.name && !n.virtual ? `<div class="note" style="margin-top:6px">In Home Assistant: ${esc(n.auto)}. Clear the box to put it back.</div>` : '');
+  // Customise, one thing: its name, the kind it is shown under, whether its room switches it, and hiding it
+  function thingEdit(el) {
+    const n = sel, st = states()[n.eid], auto = st ? catOf(n.eid, st) : null, power = n.cat === 'power';
+    el.style.setProperty('--sc', n.sc);
+    let h = `<div class="h"><i></i>${esc(n.name)}<button class="x" data-a="close" aria-label="Close">✕</button></div>
+      <div class="st">${esc(roomName(n))} · ${esc(CATS[n.cat].name)} · ${esc(n.eid)}</div>` + nameRow(n);
+    if (!power) h += `<div class="lbl">Shown under</div><select data-a="kind" aria-label="Shown under"><option value="">Automatic${auto ? ' (' + esc(CATS[auto].name) + ')' : ''}</option>
+      ${CAT_ORDER.map(c => `<option value="${c}"${PROF.cat[n.eid] === c ? ' selected' : ''}>${esc(CATS[c].name)}</option>`).join('')}</select>`;
+    if (!power) {
+      const cur = PROF.grp[n.eid] || '';
+      h += `<div class="lbl">Group · a room of your own</div>` + (newGroup
+        ? `<div class="row"><input class="txt" type="text" data-a="gname" placeholder="Name of the new group" maxlength="30" autocomplete="off" spellcheck="false" enterkeyhint="done" aria-label="Name of the new group"><button class="btn on" data-a="gadd">Create</button><button class="btn" data-a="gno">Cancel</button></div>`
+        : `<select data-a="grp" aria-label="Group"><option value="">None · stays in ${esc(realRoom(n.eid))}</option>${PROF.groups.map(g => `<option value="${esc(g.id)}"${g.id === cur ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}<option value="+">New group…</option></select>`) +
+        (cur && VIEW === 'all' ? `<div class="note" style="margin-top:6px">In My view it is in this group, not in ${esc(realRoom(n.eid))}.</div>` : '');
+    }
+    if (n.cat === 'lights') {
+      const yaml = CFG.lights_exclude(n.eid, n.name), out = NOL.has(n.eid);
+      h += `<div class="lbl">Holding its room, and “all lights”</div>` + (yaml ? `<div class="note" style="margin-top:6px">Left out by <b>lights_exclude</b> in the card's settings.</div>`
+        : `<div class="row"><button class="btn${out ? '' : ' on'}" data-a="nol" data-v="in">Switches it</button><button class="btn${out ? ' on' : ''}" data-a="nol" data-v="out">Leaves it alone</button></div>`);
+    }
+    h += `<div class="row">${isHid(n) ? `<button class="btn on" data-a="hide">${svgOf('eye')}&nbsp;Show in My view again</button>` : n.hid ? '' : `<button class="btn warn" data-a="hide">${svgOf('eyeoff')}Hide from ${VIEW === 'all' ? 'My view' : 'the ring'}</button>`}<button class="btn" data-a="close">Back</button></div>
+      <div class="note">${n.hid && !isHid(n) ? 'Hidden in My view along with its room, floor or kind. ' : ''}${esc(scopeNote())} A hidden thing is listed in its room's Customise card, to bring back.</div>`;
+    el.innerHTML = h; wireName(el, n);
+    const gi = el.querySelector('[data-a="gname"]');
+    if (gi) {
+      const add = () => { const v = gi.value.trim().slice(0, 30); if (!v) { gi.focus(); return; } newGroup = false; setGroup(n, 'g' + Date.now().toString(36), v); };
+      gi.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') add(); if (e.key === 'Escape') { newGroup = false; controls(); } });
+      el.querySelector('[data-a="gadd"]').onclick = add; el.querySelector('[data-a="gno"]').onclick = () => { newGroup = false; controls(); };
+      gi.focus();
+    }
+    el.querySelectorAll('[data-a]').forEach(b => {
+      const k = b.dataset.a;
+      if (k === 'kind') { b.onchange = () => { const v = b.value; change(p => { if (v) p.cat[n.eid] = v; else delete p.cat[n.eid]; }, n.name + ': ' + (v ? CATS[v].name : 'automatic')); }; return; }
+      if (k === 'grp') { b.onchange = () => { if (b.value === '+') { newGroup = true; controls(); } else setGroup(n, b.value); }; return; }
+      if (k === 'close') b.onclick = () => { sel = null; nodes.forEach(paint); controls(); };
+      if (k === 'hide') b.onclick = () => toggleHide(n);
+      if (k === 'nol') b.onclick = () => { const out = b.dataset.v === 'out'; if (out === NOL.has(n.eid)) return; change(p => { p.nol = p.nol.filter(x => x !== n.eid); if (out) p.nol.push(n.eid); }, n.name + (out ? ': left alone' : ': switched with its room')); };
+    });
+  }
+  // Customise, a floor, room or kind (or the whole house): rename or hide it, hide what is in it, and bring hidden things back.
+  // The card for the place you are in also holds who the setup is for and this screen's animation speed.
+  function groupEdit(el) {
+    const t = editN || focus, home = t.kind === 'home', held = !!editN;
+    const items = t.kind === 'area' ? leaves(t) : t.kids, hid = VIEW === 'all' ? [] : hiddenUnder(t), L = leaves(t).length;
     el.style.setProperty('--sc', 'var(--light)');
-    const label = v => v <= 0 ? 'instant' : v >= 100 ? 'normal (0.75 s)' : (FULL_MS * v / 100 / 1000).toFixed(2).replace(/0$/, '') + ' s';
-    el.innerHTML = `<div class="h"><i></i>Customise<button class="x" data-done="1" aria-label="Done">✕</button></div>
-      <div class="st">Tap a corner button to change what it does.</div>
-      <div class="lbl">Animation speed · this screen</div>
-      <div class="row"><span class="pv" style="min-width:auto;text-align:left">Instant</span><input type="range" min="0" max="100" step="5" value="${SPEED}" data-a="speed" aria-label="Animation speed"><span class="pv" style="min-width:auto">Normal</span></div>
-      <div class="note" id="speedv">Going into a room: ${label(SPEED)}</div>
-      <div class="row"><button class="btn" data-done="1">Done</button></div>`;
-    const r = el.querySelector('[data-a="speed"]');
-    r.oninput = () => { SPEED = +r.value; const n = el.querySelector('#speedv'); if (n) n.textContent = 'Going into a room: ' + label(SPEED); };
-    r.onchange = () => { LS.set('homeRingSpeed', String(SPEED)); buzz(); toast('Animation: ' + label(SPEED)); };
-    el.querySelectorAll('[data-done]').forEach(b => b.onclick = () => setEdit(false));
+    let h = `<div class="h"><i></i>${home ? 'Customise' : 'Customise · ' + esc(t.name)}<button class="x" data-a="${held ? 'unhold' : 'done'}" aria-label="${held ? 'Close' : 'Done'}">✕</button></div>
+      <div class="st">${home ? '' : esc(`${t.sys ? 'System' : t.virtual ? 'Group' : KIND_WORD[t.kind]} · ${L} thing${L === 1 ? '' : 's'}`) + (held ? '' : ' · ')}${held ? '' : 'Tap anything on the ring to rename, move or hide it, or a corner button to choose what it does.'}</div>`;
+    if (canRename(t)) h += nameRow(t);
+    if (items.length) h += `<div class="lbl">${home ? 'On the ring' : 'In ' + esc(t.name)} · tap the eye to hide</div><div class="erows">` + items.map(n =>
+      `<div class="erow${isHid(n) ? ' off' : ''}"><button class="en" data-go="${n.i}">${esc(n.name)}<small>${esc(n.kind === 'ent' ? CATS[n.cat].name : leaves(n).length + ' thing' + (leaves(n).length === 1 ? '' : 's'))}</small></button>` +
+      (canHide(n) && (isHid(n) || !n.hid) ? `<button class="eye" data-hide="${n.i}" aria-label="${isHid(n) ? 'Show' : 'Hide'} ${esc(n.name)}" title="${isHid(n) ? 'Bring back' : 'Hide'}">${svgOf(isHid(n) ? 'eyeoff' : 'eye')}</button>` : '') + `</div>`).join('') + `</div>`;
+    if (hid.length) h += `<div class="lbl">Hidden${home ? '' : ' here'} · ${hid.length} · tap the eye to bring back</div><div class="erows">` + hid.map((x, i) =>
+      `<div class="erow off"><span class="en">${esc(x.name)}<small>${esc(x.where)}</small></span><button class="eye" data-show="${i}" aria-label="Show ${esc(x.name)}" title="Bring back">${svgOf('eyeoff')}</button></div>`).join('') + `</div>`;
+    const what = t.sys ? 'this system' : 'this ' + (KIND_WORD[t.kind] || '').toLowerCase();
+    const foot = `<div class="row">${t.virtual ? `<button class="btn warn" data-a="gdel">Remove this group</button>` : !canHide(t) ? '' : isHid(t) ? `<button class="btn on" data-a="hide">${svgOf('eye')}&nbsp;Show ${esc(what)} in My view again</button>`
+      : t.hid ? '' : `<button class="btn warn" data-a="hide">${svgOf('eyeoff')}Hide ${esc(what)}</button>`}${held ? '<button class="btn" data-a="unhold">Back</button>' : ''}<button class="btn on" data-a="done">Done</button></div>`;
+    if (!held) {
+      const sc = scopeOf(), speed = v => v <= 0 ? 'instant' : v >= 100 ? 'normal (0.75 s)' : (FULL_MS * v / 100 / 1000).toFixed(2).replace(/0$/, '') + ' s';
+      h += `<div class="lbl">This setup is for</div><div class="seg" role="group" aria-label="This setup is for">${['all', 'user', 'here'].filter(x => x !== 'user' || profStore.user !== false || sc === 'user')
+        .map(x => `<button data-scope="${x}" class="${x === sc ? 'on' : ''}" aria-pressed="${x === sc}">${SCOPE_NAME[x]}</button>`).join('')}</div>
+        <div class="note" id="scopev" style="margin-top:8px">${esc(SCOPE_NOTE[sc])}${sc === 'all' && H.user && H.user.is_admin === false ? ' Only an admin can change it: your changes are saved for your account.' : ''}</div>
+        <div class="lbl">Animation speed · this screen</div>
+        <div class="row"><span class="pv" style="min-width:auto;text-align:left">Instant</span><input type="range" min="0" max="100" step="5" value="${SPEED}" data-a="speed" aria-label="Animation speed"><span class="pv" style="min-width:auto">Normal</span></div>
+        <div class="note" id="speedv" style="margin-top:4px">Going into a room: ${speed(SPEED)}</div>`;
+      el.innerHTML = h + foot;
+      const r = el.querySelector('[data-a="speed"]');
+      r.oninput = () => { SPEED = +r.value; const n = el.querySelector('#speedv'); if (n) n.textContent = 'Going into a room: ' + speed(SPEED); };
+      r.onchange = () => { LS.set('homeRingSpeed', String(SPEED)); buzz(); toast('Animation: ' + speed(SPEED)); };
+      el.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => {
+        const to = b.dataset.scope, rank = { all: 0, user: 1, here: 2 }; if (to === sc) return;
+        // going wider drops the narrower setup, so it takes a second tap within 4 s
+        if (rank[to] < rank[sc] && (!b.dataset.armed || Date.now() - +b.dataset.armed > 4000)) {
+          b.dataset.armed = Date.now(); buzz();
+          const n = el.querySelector('#scopev'); if (n) n.textContent = `Tap “${SCOPE_NAME[to]}” again: ${sc === 'here' ? "this screen's" : 'your'} own setup is dropped and ${to === 'all' ? 'the shared one' : "your account's"} is used.`;
+          return;
+        }
+        setScope(to);
+      });
+    } else {
+      el.innerHTML = h + foot + `<div class="note">${esc(scopeNote())}</div>`;
+    }
+    wireName(el, t);
+    el.querySelectorAll('[data-a="done"]').forEach(b => b.onclick = () => setEdit(false));
+    el.querySelectorAll('[data-a="unhold"]').forEach(b => b.onclick = () => { editN = null; nodes.forEach(paint); controls(); });
+    el.querySelectorAll('[data-a="hide"]').forEach(b => b.onclick = () => toggleHide(t));
+    el.querySelectorAll('[data-a="gdel"]').forEach(b => b.onclick = () => deleteGroup(t));
+    el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => editPick(nodes[+b.dataset.go]));
+    el.querySelectorAll('[data-hide]').forEach(b => b.onclick = () => toggleHide(nodes[+b.dataset.hide]));
+    el.querySelectorAll('[data-show]').forEach(b => b.onclick = () => { const x = hid[+b.dataset.show]; showKey(x.k, x.name); });
   }
   function chooserCard(el) {
     const cur = kindOf(editPos);
@@ -1714,16 +1965,16 @@ function createRing(sr, host, CFG) {
       <div class="opts">${Object.keys(KINDS).filter(k => k !== 'none').map(k => opt(k, KINDS[k].name, k, KINDS[k].hc)).join('')}</div>
       ${rooms.length ? `<div class="lbl">Or go straight to a room</div><div class="opts">${rooms.map(n => opt('room:' + n.id, n.name, 'room', 'var(--light)')).join('')}</div>` : ''}
       <div class="row">${opt('none', 'Leave it empty', 'none', 'var(--dim)')}</div>
-      <div class="note">${cornersStore.shared === false ? 'Saved in this browser.' : 'Saved for every screen.'} Holding a corner still does its quick action once you tap Done.</div>`;
-    el.querySelectorAll('[data-k]').forEach(b => b.onclick = async () => {
-      const next = CORNERS.slice(); next[POS.indexOf(editPos)] = b.dataset.k;
-      const where = await saveShared(cornersStore, next); buzz();
-      toast(`${POS_NAME[editPos]}: ${kindName(b.dataset.k)}` + (where === 'here' && cornersStore.shared ? ' (this browser only)' : ''));
-      editPos = null; renderCorners(); controls(); hotBtns();
+      <div class="note">${esc(scopeNote())} Holding a corner does its quick action again once you tap Done.</div>`;
+    el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+      const next = CORNERS.slice(), pos = editPos; next[POS.indexOf(pos)] = b.dataset.k;
+      editPos = null;
+      change(p => { p.corners = next; }, `${POS_NAME[pos]}: ${kindName(b.dataset.k)}`);
+      renderCorners(); controls(); hotBtns();
     });
     el.querySelector('[data-done]').onclick = () => { editPos = null; renderCorners(); controls(); hotBtns(); };
   }
-  $('custom').onclick = () => setEdit(!EDIT);
+  $('gear').onclick = () => setEdit(!EDIT);
   renderCorners();
 
   /* ---------- saving in Home Assistant ----------
@@ -1749,12 +2000,78 @@ function createRing(sr, host, CFG) {
     s.apply(v); return 'here';
   }
   const layoutStore = makeStore(CFG.layout_key, v => setLayout(v));
-  const cornersStore = makeStore(CFG.corners_key, v => {
-    const c = cleanCorners(v) || cleanCorners(CFG.corners) || DEFAULT_CORNERS.slice();
+  // corners chosen before 1.5 were saved on their own; they still apply until a setup below chooses its own
+  const cornersStore = makeStore(CFG.corners_key, v => { legacyCorners = cleanCorners(v); refreshCorners(); });
+  function refreshCorners() {
+    const c = PROF.corners || legacyCorners || cleanCorners(CFG.corners) || DEFAULT_CORNERS.slice();
     if (c.join() === CORNERS.join()) return;
     CORNERS = c; renderCorners(); if (hot && !CORNERS.includes(hot) && hot !== 'cams') hot = null; controls(); hotBtns();
-  });
-  function startSync() { if (CFG.layout_lock) startStore(layoutStore); if (CFG.hot_buttons && !MINI) startStore(cornersStore); }
+  }
+  function startSync() { startProfile(); if (CFG.layout_lock) startStore(layoutStore); if (CFG.hot_buttons && !MINI) startStore(cornersStore); }
+
+  /* ---------- the Customise setup, in three layers ----------
+     all  = Home Assistant's shared frontend data: every screen and everyone (writing needs an admin)
+     user = Home Assistant's data for the signed-in user: all of their devices
+     here = this browser only
+     The narrowest layer that exists is the one in use, and the one Customise writes to. Picking a narrower one copies
+     what is on screen into it; picking a wider one drops the narrower ones. */
+  const cleanProfile = v => {
+    if (!v || typeof v !== 'object') return null;
+    const strs = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x) : [];
+    const map = (o, ok) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, x]) => typeof x === 'string' && x && ok(x)));
+    const groups = (Array.isArray(v.groups) ? v.groups : []).filter(g => g && typeof g.id === 'string' && g.id && typeof g.name === 'string' && g.name).map(g => ({ id: g.id, name: g.name }));
+    return { v: 1, hide: strs(v.hide), name: map(v.name, () => true), cat: map(v.cat, x => CAT_ORDER.includes(x)), nol: strs(v.nol),
+      groups, grp: map(v.grp, x => groups.some(g => g.id === x)), corners: cleanCorners(v.corners) };
+  };
+  const profStore = { vals: { all: null, user: null, here: null }, user: null, unsubs: [], started: false, sig: '', ls: 'homeRing:here:' + CFG.profile_key };
+  const scopeOf = () => profStore.vals.here ? 'here' : profStore.vals.user ? 'user' : 'all';
+  function applyProfile() {
+    const P = profStore, v = P.vals.here || P.vals.user || P.vals.all || emptyProfile(), sig = JSON.stringify(v);
+    if (sig === P.sig) return;
+    P.sig = sig; PROF = v; HIDE = new Set(v.hide); NOL = new Set(v.nol);
+    refreshCorners();
+    structKey = ''; if (H && root) update(H);
+  }
+  function startProfile() {
+    const P = profStore; if (P.started || !H) return; P.started = true;
+    try { P.vals.here = cleanProfile(JSON.parse(localStorage.getItem(P.ls) || 'null')); } catch (e) {}
+    applyProfile();
+    const conn = H.connection; if (!conn || !conn.subscribeMessage) { P.user = false; return; }
+    const sub = (layer, type) => conn.subscribeMessage(m => { P.vals[layer] = cleanProfile(m && m.value); if (layer === 'user') P.user = true; applyProfile(); if (EDIT && !sel && !editPos) controls(); },
+      { type, key: CFG.profile_key }).then(u => { if (destroyed) u(); else P.unsubs.push(u); });
+    sub('all', 'frontend/subscribe_system_data').catch(() => {});
+    sub('user', 'frontend/subscribe_user_data').catch(() => {          // an older Home Assistant: read it once instead
+      if (!H.callWS) { P.user = false; return; }
+      H.callWS({ type: 'frontend/get_user_data', key: CFG.profile_key }).then(r => { P.user = true; P.vals.user = cleanProfile(r && r.value); applyProfile(); }, () => { P.user = false; });
+    });
+  }
+  async function writeLayer(layer, v) {     // shown at once; put back if Home Assistant says no
+    const P = profStore, old = P.vals[layer];
+    P.vals[layer] = v; applyProfile();
+    if (layer === 'here') { try { if (v) localStorage.setItem(P.ls, JSON.stringify(v)); else localStorage.removeItem(P.ls); } catch (e) {} return true; }
+    try { await H.callWS({ type: layer === 'all' ? 'frontend/set_system_data' : 'frontend/set_user_data', key: CFG.profile_key, value: v }); return true; }
+    catch (e) { P.vals[layer] = old; applyProfile(); return false; }
+  }
+  // save to the layer in use. Someone who may not write the shared setup gets their own from then on ('user!', or 'here!')
+  async function saveProfile(next) {
+    const s = scopeOf(), admin = !(H.user && H.user.is_admin === false);
+    if (s === 'here') { await writeLayer('here', next); return 'here'; }
+    if (s === 'all' && admin && await writeLayer('all', next)) return 'all';
+    if (await writeLayer('user', next)) return s === 'user' ? 'user' : 'user!';
+    await writeLayer('here', next); return 'here!';
+  }
+  async function setScope(to) {
+    const P = profStore, cur = scopeOf(), rank = { all: 0, user: 1, here: 2 }; if (to === cur) return;
+    const now = JSON.parse(JSON.stringify(Object.assign({}, PROF, { corners: CORNERS })));
+    let ok = true;
+    if (rank[to] > rank[cur]) ok = await writeLayer(to, now);
+    else {
+      if (to === 'user' && !P.vals.user) ok = await writeLayer('user', now);
+      if (ok && P.vals.here) await writeLayer('here', null);
+      if (ok && to === 'all' && P.vals.user) ok = await writeLayer('user', null);
+    }
+    buzz(); toast(ok ? 'This setup is now for: ' + SCOPE_NAME[scopeOf()].toLowerCase() : "Home Assistant wouldn't save that"); controls();
+  }
 
   /* ---------- layout lock ---------- */
   const LOCK_SVG = '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
@@ -1765,7 +2082,7 @@ function createRing(sr, host, CFG) {
     LAYOUT = v; structKey = ''; if (H && root) update(H);
   }
   function makeLayout() {                 // the layout as it is now, unlocked, for both views
-    const keep = MODE, modes = {};
+    const keep = MODE, keepV = VIEW, modes = {}; VIEW = 'mine';
     for (const m of ['rooms', 'systems']) {
       MODE = m; const R = build(H, true), order = {}, centres = {};
       (function walk(n) {
@@ -1774,13 +2091,13 @@ function createRing(sr, host, CFG) {
       })(R);
       modes[m] = { order, centres };
     }
-    MODE = keep;
+    MODE = keep; VIEW = keepV;
     const out = { v: 1, at: new Date().toISOString(), modes, scenes: sceneList(true) };
     structKey = ''; update(H);            // building the snapshots replaced the ring's own tree: put it back
     return out;
   }
   function lockUi() {
-    const seg = $('lockseg'); seg.hidden = !CFG.layout_lock || MINI; if (seg.hidden) return;
+    const seg = $('lockseg'); seg.hidden = !CFG.layout_lock || MINI || VIEW === 'all'; if (seg.hidden) return;
     const b = $('lock'), on = !!LAYOUT;
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
     b.innerHTML = (on ? LOCK_SVG : OPEN_SVG) + (on ? 'Locked' : 'Lock layout');
@@ -1805,6 +2122,13 @@ function createRing(sr, host, CFG) {
 
   function setMode(m) { if (m === MODE) return; MODE = m; LS.set('homeRingMode', m); sel = null; focus = null; structKey = ''; if (H) update(H); }
   $('mode').querySelectorAll('button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+  // My view / Everything: only offered once the setup hides something or has a group, since otherwise they are the same
+  function setView(v) { if (v === VIEW) return; VIEW = v; LS.set('homeRingView', v); sel = null; editN = null; structKey = ''; if (H) update(H); toast(v === 'all' ? 'Everything, in its real room' : 'My view'); }
+  function viewUi() {
+    const seg = $('view'); seg.hidden = MINI || !(VIEW === 'all' || PROF.hide.length || PROF.groups.length);
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === VIEW));
+  }
+  $('view').querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.v));
 
   /* ---------- voice (optional): an input_text set to "area:<id or name>|<unix seconds>", "floor:…|…" or "home|…" ---------- */
   let voiceSeen = null;
@@ -1850,6 +2174,7 @@ function createRing(sr, host, CFG) {
     if (key !== structKey || !root) {
       structKey = key; const was = focus, wsel = sel;
       root = build(h); setup();
+      editN = findSame(editN);
       focus = findSame(was) || root; sel = wsel ? nodes.find(n => n.eid === wsel.eid) || null : null; geom();
       Object.assign(view, { x0: focus.x0, x1: focus.x1, d: focus.depth }); draw(); labels(); side(); controls();
       lastStates = h.states; ringSig = sigOf(h); selSt = sel && h.states[sel.eid];
@@ -1861,11 +2186,11 @@ function createRing(sr, host, CFG) {
     const sig = sigOf(h); if (sig === ringSig) return;
     ringSig = sig; motionCheck(h, false); safetyCheck(h, false); nodes.forEach(paint); if (!anim) labels(); side();
     if (hot && hot !== 'cams' && !sel) controls();          // an open Lights / Alarm / Heating card follows the house
-    if (sel && h.states[sel.eid] !== selSt) { selSt = h.states[sel.eid]; const ae = sr.activeElement; if (!ae || ae.type !== 'range') controls(); }
+    if (sel && h.states[sel.eid] !== selSt) { selSt = h.states[sel.eid]; const ae = sr.activeElement; if (!ae || (ae.type !== 'range' && !(EDIT && /^(INPUT|SELECT)$/.test(ae.tagName)))) controls(); }
   }
   function resize() { if (root) { geom(); draw(); labels(); } }
   const clock = setInterval(() => { if (root) hotBtns(); }, 15000);     // "movement" fades after two minutes
-  function destroy() { destroyed = true; for (const st of stores) if (st.unsub) { try { st.unsub(); } catch (e) {} st.unsub = null; } clearInterval(clock); clearInterval(camTimer); stopCams(); clearTimeout(hotAuto); cancelAnimationFrame(anim); }
+  function destroy() { destroyed = true; for (const st of stores) if (st.unsub) { try { st.unsub(); } catch (e) {} st.unsub = null; } profStore.unsubs.splice(0).forEach(u => { try { u(); } catch (e) {} }); clearInterval(clock); clearInterval(camTimer); stopCams(); clearTimeout(hotAuto); cancelAnimationFrame(anim); }
   return { update, resize, destroy };
 }
 
@@ -1908,7 +2233,7 @@ class HomeRingCard extends HTMLElement {
 if (!customElements.get('home-ring-card')) customElements.define('home-ring-card', HomeRingCard);
 window.customCards = window.customCards || [];
 if (!window.customCards.some(c => c.type === 'home-ring-card'))
-  window.customCards.push({ type: 'home-ring-card', name: 'Home Ring', description: 'Your home as a ring you drill into: floors, rooms, kinds of thing and the things themselves.', preview: false, documentationURL: 'https://github.com/anchorapp100/home-ring-card' });
+  window.customCards.push({ type: 'home-ring-card', name: 'Home Ring', description: 'Your home as a ring you drill into: floors, rooms, kinds of thing and the things themselves.', preview: false, documentationURL: 'https://github.com/magooffm/home-ring-card' });
 console.info(`%c HOME-RING-CARD %c ${HOME_RING_VERSION} `, 'color:#0a0f16;background:#ffb638;font-weight:700', 'color:#ffb638;background:#0a0f16');
 
 </script>

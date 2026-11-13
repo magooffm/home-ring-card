@@ -6,7 +6,7 @@ The centre is where you are. The rings around it are your floors, then rooms, th
 
 ![Home Ring in action: tapping into a room, dimming a light by sliding, coming back out, and the By system view](images/tour.gif)
 
-*A made-up demo house. [Try it yourself in your browser](https://anchorapp100.github.io/home-ring-card/demo/).*
+*A made-up demo house.*
 
 Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there is nothing to list by hand. **Every device with a room is on the ring.** Give a new device a room and it appears within a second or two, whatever kind of device it is.
 
@@ -26,7 +26,8 @@ Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there
 - **Scenes** sit in a band around the outside. Tap one to run it.
 - **Layout lock.** Tap **Lock layout** and every room stays exactly where it is. New devices squeeze into their room, and a new room starts slim at the end of its floor, so the rooms you know move a degree or two at most. **Re-tidy** lays everything out afresh. The lock is kept in Home Assistant, so every screen shows the same ring.
 - **By room or By system.** Switch the ring to Lights, Heating, Energy, TV & music, Security and Blinds, each split by room. Energy can include your solar, battery and grid readings.
-- **Four corner buttons**, Cameras, Lights, Alarm and Heating to start with. Tap one for its card and hold it for its quick action. Tap **Customise** to change what each corner does. Choose from:
+- **Customise on screen.** Tap the gear beside the ring to hide things, rooms and floors, rename them, move a thing to another kind and choose the corner buttons. Each screen or each person can have their own setup. See [Customise](#customise).
+- **Four corner buttons**, Cameras, Lights, Alarm and Heating to start with. Tap one for its card and hold it for its quick action. Tap the gear to change what each corner does. Choose from:
   - **Cameras** opens a grid of stills, and opens by itself when a doorbell rings.
   - **Lights:** hold to switch the whole house.
   - **Alarm** arms from the ring. Disarming always goes through Home Assistant's own keypad.
@@ -60,7 +61,7 @@ A short checklist before you install. Most problems come from the first two.
 4. **Switches that are really lights.** A switch counts as a light only with "light", "lamp" or "bulb" in its name, otherwise it is a Plug. Rename it, or use **Show as → Light**.
 5. **Names.** The ring drops the room's name from the front, so "Kitchen Ceiling" in the Kitchen reads "Ceiling". Rename devices with vague names, such as a "solarcharger".
 6. **Room colours need a thermostat.** A room is tinted by its thermostat's temperature. Plain temperature sensors don't change its colour.
-7. **To leave something out, hide it** in Home Assistant, or use `exclude` in the card. Settings and diagnostic entities are left out automatically.
+7. **To leave something out,** tap the gear and hide it on the ring. You can also hide it in Home Assistant, or use `exclude` in the card. Settings and diagnostic entities are left out automatically.
 
 **Installing**
 
@@ -70,25 +71,25 @@ A short checklist before you install. Most problems come from the first two.
 
 **Using it**
 
-11. **Locking the layout and choosing corners for every screen needs an admin user.** Anyone else changes only their own browser.
+11. **Locking the layout and changing the setup for every screen needs an admin user.** Anyone else locks only their own browser, and their Customise changes are saved for their own account.
 12. **Alarm:** arming from the ring only works if your alarm doesn't ask for a code to arm. Disarming always uses Home Assistant's keypad.
 13. **Doorbells** open the cameras only when they are paired in `cameras:` in the card.
 14. **Solar, battery and grid readings** need `energy:` in the card. Add `invert: true` if a reading's plus and minus run the wrong way.
 15. **Voice** ("show me the kitchen") is optional: two files to copy, a restart, and `voice_entity` in the card.
 16. **Wall tablets:** use a panel view with `height: calc(100vh - 56px)` (or `100vh - 16px` with the header hidden). On a slow tablet, set the animation speed to Instant in Customise.
-17. **Busy rooms get thin slices.** Hide what you never use to keep the ring readable.
+17. **Busy rooms get thin slices.** Hide what you never use (the gear, then the eye beside it) to keep the ring readable.
 18. **Easiest of all:** run the template in [AI_SETUP.md](AI_SETUP.md) and give the result to an AI with its prompt. It writes your card and lists every device that still needs a room.
 
 ## Install
 
 ### HACS (recommended)
 
-[![Open your Home Assistant and add Home Ring to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=anchorapp100&repository=home-ring-card&category=plugin)
+[![Open your Home Assistant and add Home Ring to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=magooffm&repository=home-ring-card&category=plugin)
 
 The button opens your own Home Assistant on this repository; download Home Ring, then reload your browser. In Home Assistant 2026.11 and later, HACS is built in as the **Marketplace** (Settings → Marketplace) and the button works there too. Or do it by hand:
 
 1. In HACS, open the **⋮** menu → **Custom repositories**.
-2. Add `https://github.com/anchorapp100/home-ring-card` with the type **Dashboard**.
+2. Add `https://github.com/magooffm/home-ring-card` with the type **Dashboard**.
 3. Find **Home Ring** in HACS and download it.
 4. Reload your browser.
 
@@ -226,7 +227,9 @@ layout_lock: true
 | `hot_buttons` | `true` | The four corner buttons |
 | `corners` | `[cams, lights, alarm, heat]` | Starting choice for the corners: top left, top right, bottom left, bottom right. Kinds: `cams`, `lights`, `alarm`, `heat`, `media`, `scenes`, `doors`, `energy`, `blinds`, `fans`, `plugs`, `room:<area id>`, `none`. A choice made with Customise overrides it |
 | `animation_speed` | `100` | How fast the ring glides into a room: `0` is instant, `100` the normal 0.75 s. Each screen can change it in Customise |
-| `customise`, `corners_key` | `true`, `home_ring_corners` | Show the Customise button; name the choice is saved under |
+| `customise` | `true` | Show the gear that starts Customise. A saved setup still applies when it is `false` |
+| `profile_key` | `home_ring_profile` | Name the Customise setup is saved under; give two rings different keys to set them up separately |
+| `corners_key` | `home_ring_corners` | Where corners chosen before 1.5 were saved. They still apply until a setup chooses its own |
 | `cameras` | every camera with a room | Camera stills, doorbells and motion |
 | `camera_refresh` | `2` | Seconds between stills |
 | `cameras_path`, `alarm_path` | none | Open a view instead of Home Assistant's pop-up |
@@ -241,15 +244,78 @@ layout_lock: true
 | `layout_lock` | `true` | Show the Lock layout button and follow a saved lock (`false` hides it) |
 | `layout_key` | `home_ring_layout` | Name the lock is saved under; give two rings different keys to lock them separately |
 
-## Corner buttons
+## Customise
 
-Tap **Customise** in the panel. The four corners get a dashed outline. Tap one, pick what it should do, and tap **Done**. While Customise is on, holding a corner does nothing, so nothing gets switched while you set it up.
+Tap the **gear** beside the ring (on a phone it sits in the ring's top right corner). It turns into a tick; tap it again when you are done. While Customise is on nothing gets switched: holds, slides and scenes do nothing.
+
+The view stays where it is while you customise. Tap anything you can see, a floor, room, kind or thing, and its options open. To change what is inside a room, tap the tick, go into the room and tap the gear again.
+
+- **Tap a thing** to change it:
+  - **Name on the ring.** Type a name and press Enter. Clear the box to put the Home Assistant name back.
+  - **Shown under.** Move it to another kind, for example a switch from Plugs to Lights.
+  - **Group.** Put it in a room of your own. See [Groups](#groups-rooms-of-your-own).
+  - **Holding its room, and "all lights".** Choose whether a light is switched with its room and the house.
+  - **Hide from the ring.**
+- **Tap a floor, room or kind** to rename or hide it. Its card also lists what is in it, with an eye beside each one to hide it.
+- **Tap the centre** for the place you are in. That card also has **This setup is for** and the animation speed.
+- **Hidden things** are listed at the bottom of the card for their room, their floor and the whole house. Tap the crossed-out eye to bring one back.
+- **Tap a corner button** to pick what it does.
+
+Every change is saved at once. Hiding and renaming here change only the ring, not Home Assistant.
+
+### Groups: rooms of your own
+
+A group is a room that exists only on the ring. It can hold things from any real rooms, for example "Evening" with a lamp from the living room and one from the kitchen.
+
+- **Make one:** tap the gear, tap a thing, and under **Group** choose **New group…** and give it a name. Add more things by choosing that group on their cards.
+- **Where it shows:** groups sit in their own **Groups** segment beside the floors. A group works like a room: tap to go in, hold to switch its lights, or use it as a corner shortcut.
+- **A thing in a group leaves its real room** in My view, so nothing is on the ring twice.
+- **Take a thing out:** set its Group back to **None**. A group with nothing left in it disappears.
+- **Remove a group:** tap it in Customise and choose **Remove this group**. Its things go back to their rooms.
+
+Nothing changes in Home Assistant; its areas and floors stay as they are.
+
+### My view and Everything
+
+Once you have hidden something or made a group, the panel shows a second switch:
+
+| View | What it shows |
+|---|---|
+| **My view** | Your setup: hidden things left out, groups shown. |
+| **Everything** | Every thing in its real room. Hidden ones are dimmed with a dashed edge, and there are no groups. |
+
+- Names and kinds you changed apply in both views.
+- Customise works in both. In Everything, a hidden thing's card has **Show in My view again**.
+- Each screen remembers its own view, so a wall tablet can stay on My view while you look through Everything on a phone.
+- The layout lock belongs to My view. Everything always lays itself out afresh.
+
+### One setup, or one per person or screen
+
+The card you get when Customise starts (or when you tap the centre) shows **This setup is for**:
+
+| Choice | Who sees it |
+|---|---|
+| **Every screen** | Everyone, on every device. Changing it needs an admin. |
+| **My account** | You, on every device you sign in on. Everyone else keeps theirs. |
+| **This screen** | Only this browser or app. Use it for a wall tablet or a phone that should show something different. |
+
+- Choosing a narrower one starts from what is on screen now, and from then on that screen or person changes only their own copy.
+- Choosing a wider one takes a second tap, because the narrower setup is dropped.
+- If someone who is not an admin changes the shared setup, they get their own copy for their account.
+
+The setup holds what is hidden, the names, the kinds, the groups and the corners. The layout lock is separate and stays shared.
+
+### Corner buttons
+
+In Customise the four corners get a dashed outline. Tap one and pick what it should do.
 
 ![Choosing what a corner does](images/customise.jpg)
 
-The choice is saved in Home Assistant, like the layout lock, so every screen shows the same corners. Choosing for everyone needs an admin; anyone else changes only their own browser. To fix the corners in YAML instead, set `corners:` and `customise: false`.
+To fix the corners in YAML instead, set `corners:` and `customise: false`.
 
-**Animation speed.** Before you pick a corner, Customise also shows an **Animation speed** slider. **Instant** at one end jumps straight into a room; **Normal** at the other is the full 0.75-second glide. It is saved for that screen only, so a slower wall tablet can be instant while phones keep the animation.
+### Animation speed
+
+The same card also shows an **Animation speed** slider. **Instant** at one end jumps straight into a room; **Normal** at the other is the full 0.75-second glide. It is always saved for that screen only, so a slower wall tablet can be instant while phones keep the animation.
 
 ## Layout lock
 
@@ -279,12 +345,6 @@ Say "show me the kitchen", "show me the first floor" or "show me the whole house
 5. Add `voice_entity: input_text.home_ring_focus` to the card.
 
 The ring moves when it's on screen. To also switch a tablet to the ring's view, add a navigation action to the intents, for example with Browser Mod.
-
-## Try it without Home Assistant
-
-**[Open the live demo](https://anchorapp100.github.io/home-ring-card/demo/)**. It runs the card on a made-up house, with buttons to ring the doorbell, walk into the kitchen and send a voice request.
-
-The demo is one self-contained file, [`demo/index.html`](demo/index.html), so you can also download it and open it from your computer. If you change the card or the demo, rebuild it with `node demo/build.mjs`; it is generated from `demo/template.html`.
 
 ## Good to know
 

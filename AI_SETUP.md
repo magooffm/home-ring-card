@@ -15,7 +15,7 @@ The list holds your room names, device names and entity ids. It holds no passwor
 Start a new chat. Paste the prompt below, then paste your list underneath it.
 
 ````text
-You are helping me set up the Home Ring card for Home Assistant (github.com/anchorapp100/home-ring-card).
+You are helping me set up the Home Ring card for Home Assistant (github.com/magooffm/home-ring-card).
 Home Ring shows my home as a ring I drill into: Home > floors > rooms > kinds of thing > things.
 It reads Home Assistant's own floors, areas and entities, so every device needs a room (area), and
 rooms should have a floor.
@@ -60,6 +60,8 @@ B. THE CARD. One YAML block I can paste into a card's code editor. Options:
    corners: [tl, tr, bl, br]           what each corner does: cams, lights, alarm, heat, media, scenes, doors,
                                       energy, blinds, fans, plugs, room:<area id>, none
                                       (default cams, lights, alarm, heat; people can also change them on screen)
+   On screen, the gear beside the ring also hides, renames and re-sorts things, so the YAML only needs
+   exclude for things that should never appear on any screen.
    cameras: list of {name, entity or entities: [main, fallback], doorbell, motion: [list]}
            (default: every camera that has a room, with that room's motion sensors)
    camera_refresh: seconds between stills (default 2)

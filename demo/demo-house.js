@@ -153,9 +153,28 @@
       set(eid, 'on', Object.assign({ brightness: modes[0] === 'onoff' ? null : bri }, d.hs_color ? { hs_color: d.hs_color, color_mode: 'hs' } : {}, d.color_temp_kelvin ? { color_temp_kelvin: d.color_temp_kelvin, color_mode: 'color_temp' } : {}, d.effect ? { effect: d.effect } : {}));
     };
     const ids = d => [].concat(d.entity_id || []);
+    // Home Assistant's saved frontend data (the layout lock and the Customise setup), kept in this browser for the demo
+    const subs = [], dataKey = m => 'homeRingDemo:' + (m.type.includes('user') ? 'user:' : 'all:') + m.key;
+    const readData = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
     hass = {
       states: Object.assign({}, states), entities, devices, areas, floors,
       user: { name: 'Demo' }, language: 'en',
+      connection: {
+        subscribeMessage(cb, msg) {
+          const s = { k: dataKey(msg), cb }; subs.push(s);
+          Promise.resolve().then(() => cb({ value: readData(s.k) }));
+          return Promise.resolve(() => { const i = subs.indexOf(s); if (i >= 0) subs.splice(i, 1); });
+        },
+      },
+      callWS(msg) {
+        const k = dataKey(msg);
+        if (/\/set_(system|user)_data$/.test(msg.type)) {
+          try { if (msg.value == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(msg.value)); } catch (e) {}
+          subs.filter(s => s.k === k).forEach(s => s.cb({ value: msg.value == null ? null : msg.value }));
+          return Promise.resolve(null);
+        }
+        return Promise.resolve({ value: readData(k) });
+      },
       callService(domain, service, data) {
         data = data || {};
         for (const eid of ids(data)) {
