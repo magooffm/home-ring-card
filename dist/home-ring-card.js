@@ -7,14 +7,28 @@
  * slide on a light to dim it. Everything comes from Home Assistant's own floors, areas and entities, so new
  * devices appear by themselves once they have a room.
  */
-const HOME_RING_VERSION = '1.5.0';
+const HOME_RING_VERSION = '1.6.0';
 
 const HR_CSS = `
 :host{
-  --bg:#0a0f16; --panel:#111924; --text:#eef4f9; --muted:#8a97a6; --dim:#5d6a79; --line:rgba(255,255,255,.08);
+  --bg:#0a0f16; --panel:#111924; --text:#eef4f9; --muted:#8a97a6; --dim:#5d6a79; --line:color-mix(in srgb,var(--ink) 8%,transparent);
   --light:#ffb638; --plug:#30d1b4; --heat:#ff7a45; --media:#39d98a; --alert:#ff5a5a; --fan:#4bc0e0; --cam:#b088ff;
   --hub:#0e151f; --wedge:#121a26; --cardgrad:linear-gradient(158deg,#151f2b 0%,#0c151f 100%);
+  --ink:#fff; --scn:var(--scn-c,#18222f);
   display:block; container-type:inline-size; container-name:hr;
+}
+/* the look, chosen in Customise (or theme: in the card): dark is the default above */
+:host([data-theme="light"]){
+  --bg:#e9eef3; --panel:#fff; --text:#14202c; --muted:#56626f; --dim:#8893a0; --line:rgba(0,0,0,.10);
+  --hub:#fff; --wedge:#d8e0e9; --cardgrad:linear-gradient(158deg,#fff 0%,#f1f4f8 100%); --ink:#000; --scn-c:#dce3eb;
+}
+:host([data-theme="ha"]){
+  --bg:var(--card-background-color,#0a0f16); --panel:var(--card-background-color,#111924); --text:var(--primary-text-color,#eef4f9);
+  --muted:var(--secondary-text-color,#8a97a6); --dim:var(--disabled-text-color,#5d6a79); --line:var(--divider-color,rgba(255,255,255,.08));
+  --hub:var(--secondary-background-color,#0e151f); --ink:var(--primary-text-color,#fff);
+  --wedge:color-mix(in srgb,var(--primary-text-color,#fff) 8%,var(--card-background-color,#121a26));
+  --cardgrad:var(--card-background-color,#111924); --scn-c:color-mix(in srgb,var(--primary-text-color,#fff) 12%,var(--card-background-color,#18222f));
+  --hr-font:var(--paper-font-body1_-_font-family,var(--ha-font-family-body,inherit));
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;border-radius:var(--ha-card-border-radius,16px);
@@ -29,64 +43,64 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 #ring .w{cursor:pointer;}
 #ring .w.hl path{filter:brightness(1.35);}
 #ring .w.active.k-ent path{stroke:color-mix(in srgb,var(--sc) 70%,transparent);stroke-width:1.5;}
-#ring .w.sel path{stroke:#fff;stroke-width:2.5;}
-#ring .w:focus{outline:none;} #ring .w:focus-visible path{stroke:#fff;stroke-width:2.5;}
+#ring .w.sel path{stroke:var(--ink);stroke-width:2.5;}
+#ring .w:focus{outline:none;} #ring .w:focus-visible path{stroke:var(--ink);stroke-width:2.5;}
 #ring .w.flash path{filter:brightness(1.9);transition:filter .08s;}
 #ring .lb{pointer-events:none;}
 #ring .nm{fill:var(--text);font-weight:650;}
 #ring .sub{fill:var(--muted);font-size:10.5px;font-weight:600;}
 #ring .ctr .cn{fill:var(--text);font-weight:750;}
 #ring .ctr .cs{fill:var(--muted);font-size:12px;font-weight:600;}
-#ring circle.hub{fill:var(--hub);stroke:rgba(255,255,255,.12);stroke-width:1.5;cursor:pointer;}
+#ring circle.hub{fill:var(--hub);stroke:color-mix(in srgb,var(--ink) 12%,transparent);stroke-width:1.5;cursor:pointer;}
 #ring .pulse{animation:hrpulse 2.2s ease-in-out infinite;}
 @keyframes hrpulse{50%{filter:brightness(1.45);}}
 #ring .w.moved path{animation:hrmoved 1.1s ease-out 3;}
 @keyframes hrmoved{0%{filter:brightness(2.3) saturate(1.3);}100%{filter:none;}}
 #ring .scn{cursor:pointer;}
-#ring .scn path{fill:#18222f;stroke:var(--bg);stroke-width:3;transition:fill .2s;}
-#ring .scn.last path{fill:color-mix(in srgb,var(--light) 20%,#18222f);}
-#ring .scn.flash path{fill:color-mix(in srgb,var(--light) 60%,#18222f);}
-#ring .scn text{fill:#d5dee8;font-size:12.5px;font-weight:750;letter-spacing:.03em;pointer-events:none;}
-#ring .scn:focus{outline:none;} #ring .scn:focus-visible path{stroke:#fff;}
+#ring .scn path{fill:var(--scn);stroke:var(--bg);stroke-width:3;transition:fill .2s;}
+#ring .scn.last path{fill:color-mix(in srgb,var(--light) 20%,var(--scn));}
+#ring .scn.flash path{fill:color-mix(in srgb,var(--light) 60%,var(--scn));}
+#ring .scn text{fill:var(--text);font-size:12.5px;font-weight:750;letter-spacing:.03em;pointer-events:none;}
+#ring .scn:focus{outline:none;} #ring .scn:focus-visible path{stroke:var(--ink);}
 @media (prefers-reduced-motion:reduce){ #ring .pulse{animation:none;} #ring .w.moved path{animation:none;filter:brightness(1.7);} .hot.armed{animation:none;} }
 #slide{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(30%,220px);aspect-ratio:1;border-radius:50%;display:none;place-items:center;
-  pointer-events:none;background:radial-gradient(closest-side,var(--hub) 78%,transparent 79%),conic-gradient(var(--light) calc(var(--p,0)*1%),rgba(255,255,255,.1) 0);}
+  pointer-events:none;background:radial-gradient(closest-side,var(--hub) 78%,transparent 79%),conic-gradient(var(--light) calc(var(--p,0)*1%),color-mix(in srgb,var(--ink) 10%,transparent) 0);}
 #slide div{display:flex;flex-direction:column;align-items:center;gap:2px;}
 #slide b{font-size:34px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
 #slide span{font-size:12px;color:var(--muted);font-weight:700;max-width:120px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-#toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:80%;padding:10px 18px;border-radius:14px;background:rgba(12,18,27,.95);
-  border:1px solid rgba(255,255,255,.16);font-size:15px;font-weight:750;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none;}
+#toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:80%;padding:10px 18px;border-radius:14px;background:color-mix(in srgb,var(--bg) 95%,transparent);
+  border:1px solid color-mix(in srgb,var(--ink) 16%,transparent);font-size:15px;font-weight:750;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none;}
 #toast.show{opacity:1;}
 #wait{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;}
 /* hot buttons: the four corners around the ring */
 .hot{all:unset;box-sizing:border-box;position:absolute;z-index:2;display:flex;flex-direction:column;gap:3px;width:138px;padding:10px 12px;border-radius:16px;cursor:pointer;
-  background:rgba(17,25,36,.92);border:1px solid rgba(255,255,255,.12);user-select:none;touch-action:none;color:var(--text);transition:background .2s,border-color .2s;}
+  background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);user-select:none;touch-action:none;color:var(--text);transition:background .2s,border-color .2s;}
 .hot.tl{left:0;top:0;} .hot.tr{right:0;top:0;} .hot.bl{left:0;bottom:0;} .hot.br{right:0;bottom:0;}
 .hot .hi{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;}
 .hot svg{width:22px;height:22px;fill:none;stroke:var(--hc);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;}
 .hot .hv{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hot .md{margin-left:auto;width:9px;height:9px;border-radius:50%;background:var(--alert);box-shadow:0 0 9px var(--alert);display:none;}
 .hot.motion .md{display:block;}
-.hot.lit{border-color:color-mix(in srgb,var(--hc) 55%,transparent);background:color-mix(in srgb,var(--hc) 13%,rgba(17,25,36,.94));}
+.hot.lit{border-color:color-mix(in srgb,var(--hc) 55%,transparent);background:color-mix(in srgb,var(--hc) 13%,color-mix(in srgb,var(--panel) 94%,transparent));}
 .hot.lit .hv{color:var(--text);}
 .hot.open{box-shadow:0 0 0 2px color-mix(in srgb,var(--hc) 75%,transparent);}
 .hot.armed{animation:hrarmed 2s ease-in-out infinite;}
 @keyframes hrarmed{50%{box-shadow:0 0 26px -2px var(--alert);}}
-.hot:active{transform:scale(.97);} .hot:focus-visible{box-shadow:0 0 0 2px #fff;}
+.hot:active{transform:scale(.97);} .hot:focus-visible{box-shadow:0 0 0 2px var(--ink);}
 .hot[hidden]{display:none;}
 .hot .hn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .hot.empty{opacity:.7;}
 .hot.edit{border-style:dashed;border-color:color-mix(in srgb,var(--hc) 70%,transparent);animation:hrwiggle 1.4s ease-in-out infinite;}
-.hot.picking{animation:none;box-shadow:0 0 0 2px #fff;background:color-mix(in srgb,var(--hc) 18%,rgba(17,25,36,.94));}
+.hot.picking{animation:none;box-shadow:0 0 0 2px var(--ink);background:color-mix(in srgb,var(--hc) 18%,color-mix(in srgb,var(--panel) 94%,transparent));}
 @keyframes hrwiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-1.2deg)}75%{transform:rotate(1.2deg)}}
 @media (prefers-reduced-motion:reduce){ .hot.edit{animation:none;} }
 /* the gear: starts and ends Customise. Beside the top right corner button, or in the ring's own corner on a phone */
 #gear{all:unset;box-sizing:border-box;position:absolute;z-index:3;top:0;right:146px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
-  background:rgba(17,25,36,.92);border:1px solid rgba(255,255,255,.12);color:var(--muted);transition:color .2s,background .2s,border-color .2s;}
+  background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);color:var(--muted);transition:color .2s,background .2s,border-color .2s;}
 #gear[hidden]{display:none;}
 #gear svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 #gear.on{color:#0a0f16;background:var(--light);border-color:var(--light);}
-#gear:active{transform:scale(.94);} #gear:focus-visible{box-shadow:0 0 0 2px #fff;}
+#gear:active{transform:scale(.94);} #gear:focus-visible{box-shadow:0 0 0 2px var(--ink);}
 #app.nohots #gear{right:0;}
 #ctl .txt{flex:1 1 140px;min-width:0;background:var(--hub);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:16px;}
 #ctl .txt:focus{outline:none;border-color:var(--light);}
@@ -94,7 +108,7 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 #ctl .btn.warn{display:inline-flex;align-items:center;gap:7px;color:var(--alert);}
 #ctl .btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 #ctl .erows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;}
-#ctl .erow{display:flex;align-items:stretch;min-width:0;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--line);}
+#ctl .erow{display:flex;align-items:stretch;min-width:0;border-radius:12px;background:color-mix(in srgb,var(--ink) 3.5%,transparent);border:1px solid var(--line);}
 #ctl .erow.off{border-style:dashed;} #ctl .erow.off .en{opacity:.55;}
 #ctl .erow .en{all:unset;box-sizing:border-box;cursor:pointer;flex:1 1 auto;min-width:0;padding:7px 4px 7px 10px;font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #ctl .erow span.en{cursor:default;}
@@ -102,19 +116,19 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 #ctl .erow .eye{all:unset;cursor:pointer;flex:0 0 auto;display:grid;place-items:center;width:40px;color:var(--muted);border-left:1px solid var(--line);}
 #ctl .erow .eye svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 #ctl .erow .eye:hover{color:var(--text);} #ctl .erow.off .eye{color:var(--light);}
-#ctl .erow .en:focus-visible,#ctl .erow .eye:focus-visible{box-shadow:0 0 0 2px #fff;border-radius:10px;}
+#ctl .erow .en:focus-visible,#ctl .erow .eye:focus-visible{box-shadow:0 0 0 2px var(--ink);border-radius:10px;}
 #ctl .opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px;}
-#ctl .opt{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;min-width:0;padding:8px 9px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:12.5px;font-weight:750;}
+#ctl .opt{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;min-width:0;padding:8px 9px;border-radius:12px;background:color-mix(in srgb,var(--ink) 3.5%,transparent);border:1px solid var(--line);font-size:12.5px;font-weight:750;}
 #ctl .opt span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 #ctl .opt svg{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:var(--hc);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 #ctl .opt.on{border-color:color-mix(in srgb,var(--hc) 60%,transparent);background:color-mix(in srgb,var(--hc) 14%,transparent);}
-#ctl .opt:focus-visible{box-shadow:0 0 0 2px #fff;}
+#ctl .opt:focus-visible{box-shadow:0 0 0 2px var(--ink);}
 #ctl .mrow{grid-template-columns:minmax(0,1fr) auto;}
 #ctl .link2{all:unset;cursor:pointer;min-width:0;}
 #ctl .scn2{grid-template-columns:repeat(2,minmax(0,1fr));}
 /* the side panel */
 #side{min-height:0;display:flex;flex-direction:column;gap:10px;}
-.card{background:var(--cardgrad);border:1px solid rgba(255,255,255,.10);border-radius:16px;padding:12px 14px;}
+.card{background:var(--cardgrad);border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);border-radius:16px;padding:12px 14px;}
 #crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:13px;font-weight:700;color:var(--muted);}
 #crumbs button{all:unset;cursor:pointer;color:var(--muted);padding:2px 0;}
 #crumbs button:hover{color:var(--text);}
@@ -127,14 +141,14 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 .tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:10px;}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;}
 .seg button{all:unset;cursor:pointer;font-size:12px;font-weight:800;color:var(--muted);padding:5px 12px;border-radius:999px;}
-.seg button.on{background:rgba(255,255,255,.11);color:var(--text);}
+.seg button.on{background:color-mix(in srgb,var(--ink) 11%,transparent);color:var(--text);}
 #lockseg[hidden],#tidy[hidden],#view[hidden]{display:none;}
 #ring .w.hid path{opacity:.4;stroke-dasharray:5 4;}
 #lock{display:inline-flex;align-items:center;gap:6px;}
 #lock svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 #lock.on{color:var(--light);}
 #legend{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);font-weight:700;}
-#legend i{width:96px;height:8px;border-radius:999px;background:linear-gradient(90deg,#4a8dff,rgba(255,255,255,.14) 45%,rgba(255,255,255,.14) 55%,#ff8a3d);}
+#legend i{width:96px;height:8px;border-radius:999px;background:linear-gradient(90deg,#4a8dff,color-mix(in srgb,var(--ink) 14%,transparent) 45%,color-mix(in srgb,var(--ink) 14%,transparent) 55%,#ff8a3d);}
 #ctl{flex:1 1 auto;min-height:0;overflow:auto;}
 #ctl:empty{display:none;}
 #ctl .h{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;}
@@ -147,22 +161,40 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 #ctl .pv{font-size:12.5px;font-weight:800;color:var(--muted);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;}
 #ctl .note{font-size:12.5px;color:var(--muted);margin-top:12px;}
 #ctl .kvs{margin-top:10px;}
-#ctl .kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 0;border-top:1px solid rgba(255,255,255,.05);color:var(--muted);}
-#ctl button.kv{appearance:none;-webkit-appearance:none;background:none;border:0;border-top:1px solid rgba(255,255,255,.05);font:inherit;font-size:12.5px;width:100%;text-align:left;cursor:pointer;margin:0;} #ctl button.kv:hover b{text-decoration:underline;}
+#ctl .kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--ink) 5%,transparent);color:var(--muted);}
+#ctl button.kv{appearance:none;-webkit-appearance:none;background:none;border:0;border-top:1px solid color-mix(in srgb,var(--ink) 5%,transparent);font:inherit;font-size:12.5px;width:100%;text-align:left;cursor:pointer;margin:0;} #ctl button.kv:hover b{text-decoration:underline;}
 #ctl .kv b{color:var(--text);font-weight:700;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 #ctl select{width:100%;margin-top:7px;background:var(--hub);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:inherit;font-size:13px;}
 #ctl .hue{--h:0;height:28px;appearance:none;-webkit-appearance:none;border-radius:999px;background:linear-gradient(90deg,hsl(0 90% 55%),hsl(60 90% 55%),hsl(120 90% 55%),hsl(180 90% 55%),hsl(240 90% 55%),hsl(300 90% 55%),hsl(359 90% 55%));}
 #ctl .hue::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:hsl(var(--h) 90% 55%);border:3px solid #fff;}
 #ctl .ct{height:28px;appearance:none;-webkit-appearance:none;border-radius:999px;background:linear-gradient(90deg,#ff9b3d,#fff3e0,#cfe3ff);}
 #ctl .ct::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--hub);}
-#ctl .sw{gap:7px;} #ctl .dot{all:unset;cursor:pointer;width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);}
+#ctl .sw{gap:7px;}
+#ctl .cols{gap:8px;} #ctl .cols .dot{width:28px;height:28px;border-color:transparent;}
+#ctl .dot.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink);}
+#ctl .dot.pick{position:relative;overflow:hidden;background:conic-gradient(#ff5a5a,#ffb638,#39d98a,#4bc0e0,#5b8def,#b088ff,#ff5a5a);}
+#ctl .dot.pick i{position:absolute;inset:7px;border-radius:50%;background:var(--c,var(--hub));}
+#ctl .dot.pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0;}
+#ctl .dialrow{display:flex;align-items:center;gap:14px;margin-top:8px;}
+#ctl .dialrow .note{margin-top:0;}
+#ctl .dial{width:124px;height:124px;flex:0 0 auto;}
+#ctl .dial .track{fill:none;stroke:var(--line);stroke-width:7;}
+#ctl .dial .pp{cursor:pointer;}
+#ctl .dial .pp circle{fill:var(--hub);stroke:color-mix(in srgb,var(--ink) 28%,transparent);stroke-width:1.5;}
+#ctl .dial .pp.taken circle{fill:var(--tc);}
+#ctl .dial .pp.on circle{fill:var(--sc);stroke:var(--ink);stroke-width:2.5;}
+#ctl .dial .pp text{fill:var(--muted);font-size:9px;font-weight:800;pointer-events:none;}
+#ctl .dial .pp.on text{fill:#0a0f16;}
+#ctl .dial .pp:focus{outline:none;} #ctl .dial .pp:focus-visible circle{stroke:var(--ink);stroke-width:3;}
+#ctl .kchips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;}
+#ctl .kchips .chip i{width:12px;height:12px;background:var(--sc);box-shadow:none;} #ctl .dot{all:unset;cursor:pointer;width:30px;height:30px;border-radius:50%;border:2px solid color-mix(in srgb,var(--ink) 25%,transparent);}
 #ctl .dot.white{background:linear-gradient(135deg,#fff3e0,#fff);}
 #ctl .clim{display:grid;grid-template-columns:auto 1fr;gap:18px;margin-top:10px;align-items:end;}
 #ctl .clim .big{font-size:40px;} #ctl .tgt{margin-top:2px;} #ctl .tgt .btn{font-size:20px;padding:6px 16px;}
-#ctl .graph{margin-top:8px;font-size:12px;color:var(--muted);} #ctl .graph svg{width:100%;height:90px;display:block;background:rgba(255,255,255,.03);border-radius:8px;}
+#ctl .graph{margin-top:8px;font-size:12px;color:var(--muted);} #ctl .graph svg{width:100%;height:90px;display:block;background:color-mix(in srgb,var(--ink) 3%,transparent);border-radius:8px;}
 #ctl .gl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim);margin-top:3px;}
 #ctl .art{width:100%;max-height:160px;object-fit:contain;border-radius:10px;margin-top:10px;background:#000;}
-#ctl .trow{display:grid;grid-template-columns:minmax(0,1fr) auto 52px auto;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.05);}
+#ctl .trow{display:grid;grid-template-columns:minmax(0,1fr) auto 52px auto;align-items:center;gap:8px;padding:6px 0;border-top:1px solid color-mix(in srgb,var(--ink) 5%,transparent);}
 #ctl .trow .tn{min-width:0;font-size:13px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #ctl .trow .tn small{display:block;font-size:11.5px;font-weight:650;color:var(--muted);}
 #ctl .trow .tn small.on{color:var(--heat);}
@@ -178,10 +210,10 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 #ctl .lchips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:7px;}
 #ctl .lchips .chip{padding:6px 8px;}
 #ctl .link{all:unset;cursor:pointer;display:inline-block;margin-top:12px;font-size:12.5px;font-weight:750;color:var(--muted);}
-.btn{all:unset;cursor:pointer;font-size:13px;font-weight:800;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--line);text-align:center;min-width:44px;}
+.btn{all:unset;cursor:pointer;font-size:13px;font-weight:800;padding:9px 14px;border-radius:12px;background:color-mix(in srgb,var(--ink) 6%,transparent);border:1px solid var(--line);text-align:center;min-width:44px;}
 .btn.on{background:color-mix(in srgb,var(--sc,var(--light)) 22%,transparent);border-color:color-mix(in srgb,var(--sc,var(--light)) 55%,transparent);}
 .btn:active{transform:scale(.97);} .btn[disabled]{opacity:.4;pointer-events:none;}
-.btn:focus-visible,.chip:focus-visible,.seg button:focus-visible,#back:focus-visible{box-shadow:0 0 0 2px #fff;}
+.btn:focus-visible,.chip:focus-visible,.seg button:focus-visible,#back:focus-visible{box-shadow:0 0 0 2px var(--ink);}
 input[type=range]{flex:1 1 auto;accent-color:var(--light);height:28px;}
 .big{font-size:30px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;}
 .cam{width:100%;border-radius:10px;margin-top:10px;display:block;background:#000;aspect-ratio:16/9;object-fit:cover;}
@@ -189,7 +221,7 @@ input[type=range]{flex:1 1 auto;accent-color:var(--light);height:28px;}
 #list .lh{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:2px 0 8px;}
 #rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;align-content:start;}
 #rows.many{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;} #rows.many .chip{padding:6px 8px;}
-.chip{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--line);}
+.chip{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border-radius:12px;background:color-mix(in srgb,var(--ink) 3.5%,transparent);border:1px solid var(--line);}
 .chip i{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--dim);}
 .chip.on{border-color:color-mix(in srgb,var(--sc) 45%,transparent);background:color-mix(in srgb,var(--sc) 10%,transparent);}
 .chip.on i{background:var(--sc);box-shadow:0 0 8px -1px var(--sc);}
@@ -200,12 +232,12 @@ input[type=range]{flex:1 1 auto;accent-color:var(--light);height:28px;}
 #minibox{display:none;}
 ha-card.mini{background:transparent;box-shadow:none;border:0;}
 #app.mini{height:var(--hr-height,220px);grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px;padding:10px 12px;cursor:pointer;
-  background:var(--cardgrad);border:1px solid rgba(255,255,255,.10);border-radius:var(--ha-card-border-radius,16px);}
+  background:var(--cardgrad);border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);border-radius:var(--ha-card-border-radius,16px);}
 #app.mini #side,#app.mini .hots{display:none;}
 #app.mini #minibox{display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0;}
 #minibox .mt{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;}
 #minibox .mt span{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);}
-#minibox .ml{display:flex;align-items:center;gap:8px;font-size:13px;color:#cfd8e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#minibox .ml{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #minibox .ml i{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--sc);box-shadow:0 0 8px -1px var(--sc);}
 #minibox .ml.off{color:var(--dim);} #minibox .ml.off i{background:var(--dim);box-shadow:none;}
 /* narrow (phones, small cards): the ring on top, the hot buttons as a row above it, the panel underneath */
@@ -312,6 +344,12 @@ const NEVER = ['scene', 'update', 'image', 'automation', 'zone', 'person', 'devi
 // what a device with no ring kind is shown by (its first match), before its readings
 const PRIMARY = ['remote', 'script', 'button', 'input_button', 'select', 'input_select', 'number', 'input_number'];
 const FLOOR_HUES = ['#5b8def', '#a77cf2', '#2fb8a6', '#e0a33a', '#e46f8f'];
+// the built-in kind colours as plain hex, for the colour picker; and the quick choices it offers
+const VAR_HEX = { 'var(--light)': '#ffb638', 'var(--plug)': '#30d1b4', 'var(--heat)': '#ff7a45', 'var(--media)': '#39d98a', 'var(--alert)': '#ff5a5a', 'var(--fan)': '#4bc0e0', 'var(--cam)': '#b088ff' };
+const SWATCHES = ['#ffb638', '#ff7a45', '#ff5a5a', '#e46f8f', '#b088ff', '#5b8def', '#4bc0e0', '#30d1b4', '#39d98a', '#8a97a6'];
+const okHex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+const toHex = v => okHex(v) ? v.toLowerCase() : VAR_HEX[v] || '#8a97a6';
+const PROFILE_V = 1;                                    // the setup format this version writes; a newer one is never written over
 const RING_WT = { floor: 1, area: 1.12, cat: 0.82, ent: 1.08 };
 const HOLD_MS = 480, MOVE_PX = 10, SLIDE_PX = 2.2;      // a 220 px slide covers 0-100 %
 const MINI_LEVELS = 2;                                  // mini: floors + rooms
@@ -353,6 +391,7 @@ function normaliseConfig(c) {
     corners_key: String(c.corners_key || 'home_ring_corners'),
     customise: c.customise !== false,
     profile_key: String(c.profile_key || 'home_ring_profile'),
+    theme: ['light', 'ha'].includes(c.theme) ? c.theme : 'dark',
     animation_speed: clamp(num(c.animation_speed) ?? 100, 0, 100),
   };
 }
@@ -476,8 +515,22 @@ function createRing(sr, host, CFG) {
      name: the same keys -> the name to show;  cat: entity id -> kind;  nol: lights left out of room and house switching
      groups: [{ id, name }] = rooms of your own, shown as area 'g:<id>' in a "Groups" segment;  grp: entity id -> group id.
      A thing in a group leaves its real room in My view; the Everything view shows it back where it really is. */
-  const emptyProfile = () => ({ v: 1, hide: [], name: {}, cat: {}, nol: [], groups: [], grp: {}, corners: null });
+  // pos: kind (or system) -> where it sits, in degrees clockwise from the top;  col: 'k:<kind>', 'f:', 'a:' or 'e:' keys -> '#rrggbb'
+  // theme: 'dark', 'light' or 'ha' (follow Home Assistant's theme)
+  const emptyProfile = () => ({ v: PROFILE_V, hide: [], name: {}, cat: {}, nol: [], groups: [], grp: {}, corners: null, pos: {}, col: {}, theme: null });
   let PROF = emptyProfile(), HIDE = new Set(), NOL = new Set();
+  const kindCol = c => PROF.col['k:' + c] || (CATS[c] ? CATS[c].sc : (SYSTEMS.find(x => x.id === c) || {}).hue || 'var(--light)');
+  const kindName2 = c => (CATS[c] || SYSTEMS.find(x => x.id === c) || { name: c }).name;
+  const anchorOf = k => k.kind === 'cat' ? PROF.pos[k.cat] : k.sys ? PROF.pos[k.sys] : undefined;
+  // kinds (or systems) given a place: in that order round the ring, the rest together in the widest gap between them
+  function placeKids(n) {
+    const A = n.kids.filter(k => anchorOf(k) != null).sort((p, q) => anchorOf(p) - anchorOf(q)); if (!A.length) return;
+    const free = n.kids.filter(k => anchorOf(k) == null);
+    let gi = A.length - 1, best = -1;
+    A.forEach((k, i) => { const g = i + 1 < A.length ? anchorOf(A[i + 1]) - anchorOf(k) : 360 - anchorOf(k) + anchorOf(A[0]); if (g > best) { best = g; gi = i; } });
+    n.kids = A.slice(0, gi + 1).concat(free, A.slice(gi + 1)); n.anchored = true;
+  }
+  host.setAttribute('data-theme', CFG.theme);
   /* ---------- layout lock: every floor, room, kind and thing keeps its place and size ----------
      A saved layout lists, for every group, its children in order with their sizes, and where each room's centre
      was. While it is locked, known things keep their saved order and size, new ones join the end of their group,
@@ -556,7 +609,7 @@ function createRing(sr, host, CFG) {
       const e = x.c === 'power' ? ENERGY_BY[x.eid] : null;
       const auto = e && e.name ? e.name : shortName(states[x.eid], x.eid, areas[a].name, x.devName);
       return mk('ent', PROF.name['e:' + x.eid] || auto,
-        { auto, hid: raw && (HIDE.has('e:' + x.eid) || (!!x.dev && HIDE.has('d:' + x.dev))), hue, cat: x.c, sc: e ? (e.color || ENERGY_COLOURS[e.kind] || ENERGY_COLOURS.other) : CATS[x.c].sc, eid: x.eid, dev: x.dev || null });
+        { auto, hid: raw && (HIDE.has('e:' + x.eid) || (!!x.dev && HIDE.has('d:' + x.dev))), hue, cat: x.c, sc: PROF.col['e:' + x.eid] || (e ? (e.color || ENERGY_COLOURS[e.kind] || ENERGY_COLOURS.other) : kindCol(x.c)), eid: x.eid, dev: x.dev || null });
     };
     const R = mk('home', 'Home');
     const aName = a => PROF.name['a:' + a] || areas[a].name;
@@ -564,11 +617,11 @@ function createRing(sr, host, CFG) {
     if (sysMode) {
       for (const sy of SYSTEMS) {
         if (gone('f:sys:' + sy.id)) continue;
-        const sn = mk('floor', sy.name, { hid: raw && HIDE.has('f:sys:' + sy.id), hue: sy.hue, id: 'sys:' + sy.id, sys: sy.id });
+        const sn = mk('floor', sy.name, { hid: raw && HIDE.has('f:sys:' + sy.id), hue: PROF.col['k:' + sy.id] || sy.hue, id: 'sys:' + sy.id, sys: sy.id });
         const areaIds = Object.keys(byArea).filter(a => byArea[a].some(x => sy.cats.includes(x.c))).sort(byName);
         for (const a of areaIds) {
-          const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue: sy.hue, id: a, tempEid: tempBy[a] });
-          byArea[a].filter(x => sy.cats.includes(x.c)).map(x => entNode(x, a, sy.hue))
+          const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue: sn.hue, id: a, tempEid: tempBy[a] });
+          byArea[a].filter(x => sy.cats.includes(x.c)).map(x => entNode(x, a, sn.hue))
             .sort((p, q) => p.name.localeCompare(q.name)).forEach(e => { e.parent = an; an.kids.push(e); });
           an.parent = sn; sn.kids.push(an);
         }
@@ -576,10 +629,11 @@ function createRing(sr, host, CFG) {
       }
     } else {
       const roomNode = (a, hue) => {
+        hue = PROF.col['a:' + a] || hue;
         const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue, id: a, tempEid: tempBy[a] });
         for (const c of CAT_ORDER) {
           const items = byArea[a].filter(x => x.c === c); if (!items.length) continue;
-          const cn = mk('cat', CATS[c].name, { hid: raw && HIDE.has('c:' + a + ':' + c), hue, cat: c, sc: CATS[c].sc });
+          const cn = mk('cat', CATS[c].name, { hid: raw && HIDE.has('c:' + a + ':' + c), hue, cat: c, sc: kindCol(c) });
           items.map(x => entNode(x, a, hue)).sort((p, q) => p.name.localeCompare(q.name)).forEach(e => { e.parent = cn; cn.kids.push(e); });
           cn.parent = an; an.kids.push(cn);
         }
@@ -594,14 +648,15 @@ function createRing(sr, host, CFG) {
         groups.push({ f: { floor_id: '~groups', name: 'Groups' }, hue: '#d98ac0', fixed: true });      // rooms of your own
         for (const g of groups) {
           if (gone('f:' + (g.f.floor_id ?? '_'))) continue;
-          const fn = mk('floor', (g.f.floor_id && PROF.name['f:' + g.f.floor_id]) || g.f.name, { auto: g.f.name, hid: raw && HIDE.has('f:' + (g.f.floor_id ?? '_')), fixed: !!g.fixed, hue: g.hue, id: g.f.floor_id });
-          for (const a of roomsOn(g.f.floor_id || null)) { const an = roomNode(a, g.hue); an.parent = fn; fn.kids.push(an); }
+          const fn = mk('floor', (g.f.floor_id && PROF.name['f:' + g.f.floor_id]) || g.f.name, { auto: g.f.name, hid: raw && HIDE.has('f:' + (g.f.floor_id ?? '_')), fixed: !!g.fixed, hue: PROF.col['f:' + (g.f.floor_id ?? '_')] || g.hue, id: g.f.floor_id });
+          for (const a of roomsOn(g.f.floor_id || null)) { const an = roomNode(a, fn.hue); an.parent = fn; fn.kids.push(an); }
           if (fn.kids.length) { fn.parent = R; R.kids.push(fn); }
         }
       }
     }
     const snap = !ignoreLock && !raw && CFG.layout_lock && LAYOUT && LAYOUT.modes && LAYOUT.modes[sysMode ? 'systems' : 'rooms'];
     if (snap && snap.order) applyLock(R, snap.order);
+    (function placeAll(n) { if (n.kids.length) { placeKids(n); n.kids.forEach(placeAll); } })(R);
     nodes = [];
     (function walk(n, d) { if (n.parent && n.parent.hid) n.hid = true; n.depth = d; n.i = nodes.length; nodes.push(n); n.kids.forEach((k, j) => { k.alt = j % 2 === 1; walk(k, d + 1); }); })(R, 0);
     (function weigh(n) { n.w = n.kids.length ? n.kids.reduce((s, k) => s + weigh(k), 0) : 1; return n.w; })(R);
@@ -611,13 +666,23 @@ function createRing(sr, host, CFG) {
     })(R, 0, 1);
     // locked: turn the ring so the rooms you know sit, on average, exactly where they were saved
     R.rot = 0;
-    if (snap && snap.centres) {
+    if (snap && snap.centres && !R.anchored) {
       let s = 0, sw = 0;
       for (const n of nodes) {
         if (n.kind !== 'area') continue; const c = snap.centres[pathKey(n)]; if (c == null) continue;
         let d = c - (n.x0 + n.x1) / 2; d -= Math.round(d); const w = n.x1 - n.x0; s += d * w; sw += w;
       }
       if (sw) R.rot = s / sw;
+    }
+    // placed kinds: turn the ring, for that room (or for By system), so each sits as close to its place as the sizes allow
+    for (const n of nodes) if (n.anchored) {
+      let sx = 0, sy = 0;
+      for (const k of n.kids) {
+        const a = anchorOf(k); if (a == null) continue;
+        const c = ((k.x0 + k.x1) / 2 - n.x0) / ((n.x1 - n.x0) || 1), d = a / 360 - (c - .5);
+        sx += Math.cos(d * TAU); sy += Math.sin(d * TAU);
+      }
+      n.rot = Math.atan2(sy, sx) / TAU;
     }
     return R;
   }
@@ -638,7 +703,7 @@ function createRing(sr, host, CFG) {
 
   /* ---------- geometry + drawing ---------- */
   const svg = $('ring'); let gW, gL, gC, gS, defs, S = 800, B = [], RMAX = 0, SCN = null, anim = null;
-  const view = { x0: 0, x1: 1, d: 0 };
+  const view = { x0: 0, x1: 1, d: 0, r: 0 };            // r: how far the ring is turned, in turns (the place you are in decides)
   function setup() {
     svg.innerHTML = '<defs></defs><g class="gw"></g><g class="gl"></g><g class="gs"></g><g class="gc"></g>';
     defs = svg.querySelector('defs'); gW = svg.querySelector('.gw'); gL = svg.querySelector('.gl'); gS = svg.querySelector('.gs'); gC = svg.querySelector('.gc');
@@ -655,8 +720,8 @@ function createRing(sr, host, CFG) {
     svg.setAttribute('viewBox', `${-S / 2} ${-S / 2} ${S} ${S}`);
   }
   function edge(k) { if (k < 0) return Math.max(0, B[0] * (1 + k)); if (k >= B.length - 1) return RMAX; const i = Math.floor(k); return lerp(B[i], B[i + 1], k - i); }
-  // the locked layout's turn applies to the whole house and fades out as you zoom into a floor
-  const ang = x => clamp((x - view.x0) / (view.x1 - view.x0), 0, 1) * TAU - Math.PI + (root && root.rot ? root.rot * TAU * clamp(1 - view.d, 0, 1) : 0);
+  // the turn belongs to the place you are in: the locked layout's for the house, the placed kinds' for a room
+  const ang = x => clamp((x - view.x0) / (view.x1 - view.x0), 0, 1) * TAU - Math.PI + view.r * TAU;
   const wrapA = a => a - TAU * Math.round(a / TAU);
   const pt = (a, r) => [r * Math.sin(a), -r * Math.cos(a)], f = v => v.toFixed(2);
   function arcD(a0, a1, r0, r1) {
@@ -808,14 +873,14 @@ function createRing(sr, host, CFG) {
     if (sel && !leaves(n).includes(sel)) sel = null;
     editN = null;
     focus = n; hover(null); side(); controls(); geom(n);
-    const to = { x0: n.x0, x1: n.x1, d: n.depth }, from = { ...view };
+    const from = { ...view }, dr = (n.rot || 0) - from.r, to = { x0: n.x0, x1: n.x1, d: n.depth, r: from.r + dr - Math.round(dr) };
     cancelAnimationFrame(anim);
     const dur = REDUCED ? 0 : animMs();
     if (dur < 20) { Object.assign(view, to); draw(); labels(); return; }
     const t0 = performance.now();
     const step = now => {
       const t = clamp((now - t0) / dur, 0, 1), e = easeIO(t);
-      view.x0 = lerp(from.x0, to.x0, e); view.x1 = lerp(from.x1, to.x1, e); view.d = lerp(from.d, to.d, e); draw();
+      view.x0 = lerp(from.x0, to.x0, e); view.x1 = lerp(from.x1, to.x1, e); view.d = lerp(from.d, to.d, e); view.r = lerp(from.r, to.r, e); draw();
       if (t < 1) anim = requestAnimationFrame(step); else { anim = null; Object.assign(view, to); draw(); labels(); }
     };
     gL.textContent = ''; gS.textContent = ''; anim = requestAnimationFrame(step);
@@ -838,12 +903,12 @@ function createRing(sr, host, CFG) {
   const canDim = n => { if (!n || n.kind !== 'ent' || domOf(n) !== 'light') return false; const st = states()[n.eid]; return !unavail(st) && ((st.attributes || {}).supported_color_modes || []).some(m => m !== 'onoff'); };
   const briOf = n => { const st = states()[n.eid], a = (st && st.attributes) || {}; return st && st.state === 'on' ? (a.brightness != null ? Math.round(a.brightness / 2.55) : 100) : 0; };
   function select(n) {
-    sel = n; hot = null; editN = null; if (editPos) { editPos = null; renderCorners(); }
+    sel = n; hot = null; editN = null; editKind = null; if (editPos) { editPos = null; renderCorners(); }
     nodes.forEach(paint); controls(); hotBtns(); if (EDIT) reveal();
   }
   // Customise: the view stays where it is, and whatever you tap is the thing being changed (the centre = where you are)
   function editPick(n) {
-    newGroup = false;
+    newGroup = false; editKind = null;
     if (n && n.kind === 'ent') { select(n); return; }
     sel = null; editPos = null; editN = n && n !== focus ? n : null;
     nodes.forEach(paint); renderCorners(); controls(); hotBtns(); reveal();
@@ -962,7 +1027,7 @@ function createRing(sr, host, CFG) {
     const L = leaves(root);
     $('minibox').innerHTML = `<div class="mt">Home Ring${CFG.navigation_path ? '<span>open ›</span>' : ''}</div>` + MINI_LINES.map(([c, on, off]) => {
       const k = L.filter(e => e.cat === c && isActive(e.eid, states()[e.eid])).length;
-      return `<div class="ml${k ? '' : ' off'}" style="--sc:${CATS[c].sc}"><i></i>${k ? k + ' ' + on : off}</div>`;
+      return `<div class="ml${k ? '' : ' off'}" style="--sc:${kindCol(c)}"><i></i>${k ? k + ' ' + on : off}</div>`;
     }).join('');
   }
   function side() {
@@ -1011,6 +1076,7 @@ function createRing(sr, host, CFG) {
     if (MINI) return;
     $('list').style.display = sel || hot || EDIT ? 'none' : '';
     if (EDIT && editPos) { chooserCard(el); return; }
+    if (EDIT && editKind) { kindEdit(el); return; }
     if (EDIT && sel) { thingEdit(el); return; }
     if (EDIT) { groupEdit(el); return; }
     if (hot && !sel) { hotCard(el); return; }
@@ -1237,11 +1303,14 @@ function createRing(sr, host, CFG) {
     blinds: { name: 'Blinds', hc: 'var(--fan)' }, fans: { name: 'Fans', hc: 'var(--fan)' },
     plugs: { name: 'Plugs', hc: 'var(--plug)' }, none: { name: 'Empty', hc: 'var(--dim)' },
   };
+  // a corner shows its kind's colour; one you changed in Customise applies here too
+  const CORNER_KIND = { cams: 'cameras', lights: 'lights', heat: 'heating', media: 'media', doors: 'sensors', energy: 'energy', blinds: 'covers', fans: 'fans', plugs: 'plugs' };
+  const cornerCol = k => { const r = roomIdOf(k); if (r) return PROF.col['a:' + r] || 'var(--light)'; const c = CORNER_KIND[k]; return (c && PROF.col['k:' + c]) || (KINDS[k] || KINDS.none).hc; };
   const POS = ['tl', 'tr', 'bl', 'br'], POS_NAME = { tl: 'Top left', tr: 'Top right', bl: 'Bottom left', br: 'Bottom right' };
   const DEFAULT_CORNERS = ['cams', 'lights', 'alarm', 'heat'];
   const validCorner = k => typeof k === 'string' && (KINDS[k] || /^room:.+/.test(k));
   const cleanCorners = v => Array.isArray(v) && v.length === 4 && v.every(validCorner) ? v.slice() : null;
-  let CORNERS = cleanCorners(CFG.corners) || DEFAULT_CORNERS.slice(), EDIT = false, editPos = null, editN = null, legacyCorners = null;
+  let CORNERS = cleanCorners(CFG.corners) || DEFAULT_CORNERS.slice(), EDIT = false, editPos = null, editN = null, editKind = null, legacyCorners = null;
   const kindOf = pos => CORNERS[POS.indexOf(pos)];
   const roomIdOf = k => k.startsWith('room:') ? k.slice(5) : null;
   const roomNodeOf = id => nodes.find(n => n.kind === 'area' && n.id === id);
@@ -1282,7 +1351,7 @@ function createRing(sr, host, CFG) {
     for (const pos of POS) {
       const b = Q('.hot.' + pos), k = kindOf(pos), rid = roomIdOf(k), kd = KINDS[k] || { hc: 'var(--light)' };
       b.dataset.h = k; b.hidden = !CFG.hot_buttons || (k === 'none' && !EDIT);
-      b.style.setProperty('--hc', kd.hc);
+      b.style.setProperty('--hc', cornerCol(k));
       b.classList.toggle('empty', k === 'none'); b.classList.toggle('edit', EDIT); b.classList.toggle('picking', EDIT && editPos === pos);
       b.setAttribute('aria-label', EDIT ? `Change the ${POS_NAME[pos].toLowerCase()} button (${kindName(k)})` : kindName(k));
       b.innerHTML = `<span class="hi">${svgOf(rid ? 'room' : k)}<span class="hn">${esc(kindName(k))}</span><i class="md"></i></span><span class="hv"></span>`;
@@ -1505,13 +1574,13 @@ function createRing(sr, host, CFG) {
      you are in. To change what is inside a room, tap the tick, go into the room and tap the gear again.
      Nothing is switched while Customise is on. Every change is saved at once, for the screens chosen under "This setup is for". */
   function setEdit(on) {
-    EDIT = on; editPos = null; editN = null; hot = null;
+    EDIT = on; editPos = null; editN = null; editKind = null; hot = null;
     $('app').classList.toggle('editing', on);
     nodes.forEach(paint); renderCorners(); controls(); hotBtns();
     if (on) toast('Tap anything to change it');
   }
   function pickCorner(pos) {
-    editPos = editPos === pos ? null : pos; sel = null; editN = null;
+    editPos = editPos === pos ? null : pos; sel = null; editN = null; editKind = null;
     nodes.forEach(paint); renderCorners(); controls(); hotBtns(); if (editPos) reveal();
   }
   const hideKeyOf = n => n.kind === 'ent' ? (n.dev ? 'd:' + n.dev : 'e:' + n.eid) : n.kind === 'cat' ? 'c:' + n.parent.id + ':' + n.cat : n.kind === 'area' ? 'a:' + n.id : 'f:' + (n.id ?? '_');
@@ -1536,7 +1605,13 @@ function createRing(sr, host, CFG) {
   function change(mut, msg) {
     const next = JSON.parse(JSON.stringify(PROF)); mut(next);
     next.groups = next.groups.filter(g => Object.values(next.grp).includes(g.id));      // a group with nothing in it is gone
-    saveProfile(next).then(where => { if (msg) toast(msg + (SAVED[where] || '')); });
+    saveProfile(next).then(where => {
+      if (where === 'wait' || where === 'newer') {
+        toast(where === 'wait' ? 'Still reading your setup from Home Assistant. Try again in a moment' : 'This setup was saved by a newer Home Ring. Reload this screen to change it');
+        controls(); return;
+      }
+      if (msg) toast(msg + (SAVED[where] || ''));
+    });
     buzz();
   }
   function hideNode(n) {
@@ -1597,6 +1672,69 @@ function createRing(sr, host, CFG) {
   const nameRow = n => `<div class="lbl">Name on the ring</div>
       <div class="row"><input class="txt" type="text" data-a="name" value="${esc(n.name)}" placeholder="${esc(n.auto || n.name)}" maxlength="40" autocomplete="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" aria-label="Name on the ring"><button class="btn" data-a="save">Save</button></div>` +
       (n.auto && n.auto !== n.name && !n.virtual ? `<div class="note" style="margin-top:6px">In Home Assistant: ${esc(n.auto)}. Clear the box to put it back.</div>` : '');
+  /* ---------- colours and places ----------
+     A colour: one of the quick choices, your own (the browser's picker, shown on the ring while you pick), or automatic.
+     A place: eight spots round the ring for a kind (in every room) or a system (in By system), or automatic. */
+  let colPrev = 0;
+  function colourRow(key, cur, label) {
+    const mine = PROF.col[key], own = mine && !SWATCHES.includes(mine);
+    return `<div class="lbl">${esc(label)}</div><div class="row sw cols">` +
+      SWATCHES.map(c => `<button class="dot${mine === c ? ' on' : ''}" style="background:${c}" data-col="${c}" aria-label="Colour ${c}" title="${c}"></button>`).join('') +
+      `<label class="dot pick${own ? ' on' : ''}" title="Your own colour" style="--c:${own ? mine : 'transparent'}"><i></i><input type="color" data-a="colpick" value="${toHex(cur)}" aria-label="Your own colour"></label>` +
+      (mine ? `<button class="btn" data-a="colauto">Automatic</button>` : '') + `</div>`;
+  }
+  // which slices a colour changes, so a picker can show it on the ring before it is saved
+  function colourTargets(key) {
+    const t = key[0], id = key.slice(2), out = [];
+    const sub = (n, f) => { f(n); n.kids.forEach(k => { if (!(k.kind === 'area' && PROF.col['a:' + k.id])) sub(k, f); }); };
+    for (const n of nodes) {
+      if (t === 'k') { if (n.cat === id && !(n.kind === 'ent' && PROF.col['e:' + n.eid])) out.push([n, 'sc']); if (n.sys === id) sub(n, x => out.push([x, 'hue'])); }
+      else if (t === 'e') { if (n.eid === id) out.push([n, 'sc']); }
+      else if ((t === 'a' && n.kind === 'area' && n.id === id) || (t === 'f' && n.kind === 'floor' && !n.sys && String(n.id ?? '_') === id)) sub(n, x => out.push([x, 'hue']));
+    }
+    return out;
+  }
+  function wireColour(el, key, name) {
+    const set = v => change(p => { if (v) p.col[key] = v; else delete p.col[key]; }, name + (v ? ': new colour' : ': colour back to automatic'));
+    el.querySelectorAll('[data-col]').forEach(b => b.onclick = () => set(b.dataset.col));
+    const a = el.querySelector('[data-a="colauto"]'); if (a) a.onclick = () => set(null);
+    const pick = el.querySelector('[data-a="colpick"]'); if (!pick) return;
+    pick.oninput = () => {                        // show it on the ring at once; saved when the picker closes
+      cancelAnimationFrame(colPrev); const v = pick.value;
+      colPrev = requestAnimationFrame(() => { for (const [n, f] of colourTargets(key)) n[f] = v; nodes.forEach(paint); });
+    };
+    pick.onchange = () => set(pick.value);
+  }
+  const POS8 = [[0, 'Top'], [45, 'Top right'], [90, 'Right'], [135, 'Bottom right'], [180, 'Bottom'], [225, 'Bottom left'], [270, 'Left'], [315, 'Top left']];
+  function posDial(key, where) {
+    const cur = PROF.pos[key], R = 36, at = {};
+    for (const [k, v] of Object.entries(PROF.pos)) if (k !== key && at[v] == null) at[v] = k;
+    const dot = ([a, nm]) => { const x = (R * Math.sin(a * Math.PI / 180)).toFixed(1), y = (-R * Math.cos(a * Math.PI / 180)).toFixed(1), o = at[a];
+      return `<g class="pp${cur === a ? ' on' : ''}${o ? ' taken' : ''}" data-pos="${a}" role="button" tabindex="0" aria-label="${nm}${o ? ' (' + esc(kindName2(o)) + ' is there)' : ''}"${o ? ` style="--tc:${kindCol(o)}"` : ''}><title>${nm}${o ? ' · ' + esc(kindName2(o)) : ''}</title><circle cx="${x}" cy="${y}" r="9.5"/></g>`; };
+    const here = POS8.find(p => p[0] === cur);
+    return `<div class="lbl">Place on the ring · ${esc(where)}</div><div class="dialrow"><svg class="dial" viewBox="-50 -50 100 100" role="group" aria-label="Place on the ring">
+      <circle class="track" r="${R}"/>${POS8.map(dot).join('')}<g class="pp${cur == null ? ' on' : ''}" data-pos="" role="button" tabindex="0" aria-label="Automatic"><circle r="17"/><text text-anchor="middle" dominant-baseline="central">Auto</text></g></svg>
+      <div class="note">${here ? `Sits at the <b>${here[1].toLowerCase()}</b>, as close as the sizes allow.` : 'Automatic: in the usual order.'} Coloured dots are taken by other kinds; two can share a place.</div></div>`;
+  }
+  function wirePos(el, key, name) {
+    const set = v => { if ((v === '' ? undefined : +v) === PROF.pos[key]) return; change(p => { if (v === '') delete p.pos[key]; else p.pos[key] = +v; }, name + ': ' + (v === '' ? 'automatic place' : POS8.find(x => x[0] === +v)[1].toLowerCase())); };
+    el.querySelectorAll('[data-pos]').forEach(g => {
+      g.addEventListener('click', () => set(g.dataset.pos));
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); set(g.dataset.pos); } });
+    });
+  }
+  // a kind (or system) on its own: its place and colour everywhere. Opened from the kinds list on the first Customise card
+  const kindSection = c => posDial(c, MODE === 'systems' ? 'on the By system ring' : 'in every room') + colourRow('k:' + c, kindCol(c), 'Colour · everywhere');
+  function kindEdit(el) {
+    const c = editKind;
+    el.style.setProperty('--sc', kindCol(c));
+    el.innerHTML = `<div class="h"><i></i>${esc(kindName2(c))}<button class="x" data-a="kback" aria-label="Close">✕</button></div>
+      <div class="st">${MODE === 'systems' ? 'System' : 'Kind'} · ${esc(scopeNote())}</div>${kindSection(c)}
+      <div class="row"><button class="btn" data-a="kback">Back</button></div>`;
+    wirePos(el, c, kindName2(c)); wireColour(el, 'k:' + c, kindName2(c));
+    el.querySelectorAll('[data-a="kback"]').forEach(b => b.onclick = () => { editKind = null; controls(); });
+  }
+
   // Customise, one thing: its name, the kind it is shown under, whether its room switches it, and hiding it
   function thingEdit(el) {
     const n = sel, st = states()[n.eid], auto = st ? catOf(n.eid, st) : null, power = n.cat === 'power';
@@ -1612,6 +1750,7 @@ function createRing(sr, host, CFG) {
         : `<select data-a="grp" aria-label="Group"><option value="">None · stays in ${esc(realRoom(n.eid))}</option>${PROF.groups.map(g => `<option value="${esc(g.id)}"${g.id === cur ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}<option value="+">New group…</option></select>`) +
         (cur && VIEW === 'all' ? `<div class="note" style="margin-top:6px">In My view it is in this group, not in ${esc(realRoom(n.eid))}.</div>` : '');
     }
+    h += colourRow('e:' + n.eid, n.sc, 'Colour when on');
     if (n.cat === 'lights') {
       const yaml = CFG.lights_exclude(n.eid, n.name), out = NOL.has(n.eid);
       h += `<div class="lbl">Holding its room, and “all lights”</div>` + (yaml ? `<div class="note" style="margin-top:6px">Left out by <b>lights_exclude</b> in the card's settings.</div>`
@@ -1619,7 +1758,7 @@ function createRing(sr, host, CFG) {
     }
     h += `<div class="row">${isHid(n) ? `<button class="btn on" data-a="hide">${svgOf('eye')}&nbsp;Show in My view again</button>` : n.hid ? '' : `<button class="btn warn" data-a="hide">${svgOf('eyeoff')}Hide from ${VIEW === 'all' ? 'My view' : 'the ring'}</button>`}<button class="btn" data-a="close">Back</button></div>
       <div class="note">${n.hid && !isHid(n) ? 'Hidden in My view along with its room, floor or kind. ' : ''}${esc(scopeNote())} A hidden thing is listed in its room's Customise card, to bring back.</div>`;
-    el.innerHTML = h; wireName(el, n);
+    el.innerHTML = h; wireName(el, n); wireColour(el, 'e:' + n.eid, n.name);
     const gi = el.querySelector('[data-a="gname"]');
     if (gi) {
       const add = () => { const v = gi.value.trim().slice(0, 30); if (!v) { gi.focus(); return; } newGroup = false; setGroup(n, 'g' + Date.now().toString(36), v); };
@@ -1650,6 +1789,16 @@ function createRing(sr, host, CFG) {
       (canHide(n) && (isHid(n) || !n.hid) ? `<button class="eye" data-hide="${n.i}" aria-label="${isHid(n) ? 'Show' : 'Hide'} ${esc(n.name)}" title="${isHid(n) ? 'Bring back' : 'Hide'}">${svgOf(isHid(n) ? 'eyeoff' : 'eye')}</button>` : '') + `</div>`).join('') + `</div>`;
     if (hid.length) h += `<div class="lbl">Hidden${home ? '' : ' here'} · ${hid.length} · tap the eye to bring back</div><div class="erows">` + hid.map((x, i) =>
       `<div class="erow off"><span class="en">${esc(x.name)}<small>${esc(x.where)}</small></span><button class="eye" data-show="${i}" aria-label="Show ${esc(x.name)}" title="Bring back">${svgOf('eyeoff')}</button></div>`).join('') + `</div>`;
+    const colKey = t.kind === 'cat' || t.sys ? 'k:' + (t.cat || t.sys) : t.kind === 'area' && t.id !== '_energy' && MODE === 'rooms' ? 'a:' + t.id : t.kind === 'floor' ? 'f:' + (t.id ?? '_') : null;
+    if (t.kind === 'cat' || t.sys) h += kindSection(t.cat || t.sys);
+    else if (colKey) h += colourRow(colKey, t.hue, t.kind === 'area' ? (t.virtual ? 'Colour of this group' : 'Colour of this room') : 'Colour of this floor');
+    if (home) {
+      const ks = MODE === 'systems' ? SYSTEMS.map(x => x.id).filter(c => root.kids.some(k => k.sys === c)) : CAT_ORDER.filter(c => leaves(root).some(e => e.cat === c));
+      const th = PROF.theme || CFG.theme;
+      h += `<div class="lbl">${MODE === 'systems' ? 'Systems' : 'Kinds'} · place and colour</div><div class="kchips">` + ks.map(c => { const pp = POS8.find(p => p[0] === PROF.pos[c]);
+        return `<button class="chip" style="--sc:${kindCol(c)}" data-kind="${esc(c)}"><i></i><span class="t"><div class="n">${esc(kindName2(c))}</div><div class="s">${pp ? esc(pp[1]) : 'automatic'}</div></span></button>`; }).join('') + `</div>
+        <div class="lbl">Look</div><div class="seg" role="group" aria-label="Look">${[['dark', 'Dark'], ['light', 'Light'], ['ha', 'Home Assistant']].map(([k, nm]) => `<button data-theme="${k}" class="${k === th ? 'on' : ''}" aria-pressed="${k === th}">${nm}</button>`).join('')}</div>`;
+    }
     const what = t.sys ? 'this system' : 'this ' + (KIND_WORD[t.kind] || '').toLowerCase();
     const foot = `<div class="row">${t.virtual ? `<button class="btn warn" data-a="gdel">Remove this group</button>` : !canHide(t) ? '' : isHid(t) ? `<button class="btn on" data-a="hide">${svgOf('eye')}&nbsp;Show ${esc(what)} in My view again</button>`
       : t.hid ? '' : `<button class="btn warn" data-a="hide">${svgOf('eyeoff')}Hide ${esc(what)}</button>`}${held ? '<button class="btn" data-a="unhold">Back</button>' : ''}<button class="btn on" data-a="done">Done</button></div>`;
@@ -1686,6 +1835,13 @@ function createRing(sr, host, CFG) {
     el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => editPick(nodes[+b.dataset.go]));
     el.querySelectorAll('[data-hide]').forEach(b => b.onclick = () => toggleHide(nodes[+b.dataset.hide]));
     el.querySelectorAll('[data-show]').forEach(b => b.onclick = () => { const x = hid[+b.dataset.show]; showKey(x.k, x.name); });
+    if (t.kind === 'cat' || t.sys) wirePos(el, t.cat || t.sys, t.name);
+    if (colKey) wireColour(el, colKey, t.name);
+    el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { editKind = b.dataset.kind; controls(); reveal(); });
+    el.querySelectorAll('[data-theme]').forEach(b => b.onclick = () => {
+      const v = b.dataset.theme; if (v === (PROF.theme || CFG.theme)) return;
+      change(p => { p.theme = v; }, 'Look: ' + b.textContent);
+    });
   }
   function chooserCard(el) {
     const cur = kindOf(editPos);
@@ -1694,7 +1850,7 @@ function createRing(sr, host, CFG) {
     el.style.setProperty('--sc', 'var(--light)');
     el.innerHTML = `<div class="h"><i></i>${esc(POS_NAME[editPos])} button<button class="x" data-done="1" aria-label="Close">✕</button></div>
       <div class="st">Now: ${esc(kindName(cur))}. Pick what it should do.</div>
-      <div class="opts">${Object.keys(KINDS).filter(k => k !== 'none').map(k => opt(k, KINDS[k].name, k, KINDS[k].hc)).join('')}</div>
+      <div class="opts">${Object.keys(KINDS).filter(k => k !== 'none').map(k => opt(k, KINDS[k].name, k, cornerCol(k))).join('')}</div>
       ${rooms.length ? `<div class="lbl">Or go straight to a room</div><div class="opts">${rooms.map(n => opt('room:' + n.id, n.name, 'room', 'var(--light)')).join('')}</div>` : ''}
       <div class="row">${opt('none', 'Leave it empty', 'none', 'var(--dim)')}</div>
       <div class="note">${esc(scopeNote())} Holding a corner does its quick action again once you tap Done.</div>`;
@@ -1716,14 +1872,28 @@ function createRing(sr, host, CFG) {
   const stores = [];
   function makeStore(key, apply) { const s = { key, apply, shared: null, unsub: null, started: false }; stores.push(s); return s; }
   const localOf = s => { try { return JSON.parse(localStorage.getItem('homeRing:' + s.key) || 'null'); } catch (e) { return null; } };
+  // A failed read is not "nothing saved": Home Assistant may still be starting (after a restart, an open screen reconnects
+  // before everything is up). Keep trying, a little slower each time, and refuse to save over what could not be read.
+  // Only an Home Assistant that does not know the command at all means there is no shared data.
+  const unknownCmd = e => !!e && (e.code === 'unknown_command' || /unknown command/i.test(e.message || ''));
+  const retryIn = n => Math.min(60000, 3000 * Math.pow(2, n));
+  const timers = [];
   function startStore(s) {
     if (s.started || !H) return; s.started = true;
-    const conn = H.connection;
-    if (!conn || !conn.subscribeMessage) { s.shared = false; s.apply(localOf(s)); return; }
-    conn.subscribeMessage(m => { s.shared = true; s.apply(m && m.value != null ? m.value : localOf(s)); }, { type: 'frontend/subscribe_system_data', key: s.key })
-      .then(u => { if (destroyed) u(); else s.unsub = u; }, () => { s.shared = false; s.apply(localOf(s)); });
+    const go = n => {
+      if (destroyed) return;
+      const conn = H.connection;
+      if (!conn || !conn.subscribeMessage) { s.shared = false; s.apply(localOf(s)); return; }
+      conn.subscribeMessage(m => { s.shared = true; s.apply(m && m.value != null ? m.value : localOf(s)); }, { type: 'frontend/subscribe_system_data', key: s.key })
+        .then(u => { if (destroyed) u(); else s.unsub = u; }, e => {
+          if (unknownCmd(e)) { s.shared = false; s.apply(localOf(s)); return; }
+          timers.push(setTimeout(() => go(n + 1), retryIn(n)));
+        });
+    };
+    go(0);
   }
-  async function saveShared(s, v) {        // 'all' = every screen, 'here' = this browser, null = not allowed
+  async function saveShared(s, v) {        // 'all' = every screen, 'here' = this browser, null = not allowed, 'wait' = not read yet
+    if (s.shared === null && H.connection) return 'wait';
     if (s.shared && H.callWS) {
       try { await H.callWS({ type: 'frontend/set_system_data', key: s.key, value: v }); try { localStorage.removeItem('homeRing:' + s.key); } catch (e) {} return 'all'; }
       catch (e) { if (!v && !localOf(s)) return null; }     // clearing a shared value needs an admin
@@ -1752,15 +1922,21 @@ function createRing(sr, host, CFG) {
     const strs = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x) : [];
     const map = (o, ok) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, x]) => typeof x === 'string' && x && ok(x)));
     const groups = (Array.isArray(v.groups) ? v.groups : []).filter(g => g && typeof g.id === 'string' && g.id && typeof g.name === 'string' && g.name).map(g => ({ id: g.id, name: g.name }));
-    return { v: 1, hide: strs(v.hide), name: map(v.name, () => true), cat: map(v.cat, x => CAT_ORDER.includes(x)), nol: strs(v.nol),
-      groups, grp: map(v.grp, x => groups.some(g => g.id === x)), corners: cleanCorners(v.corners) };
+    const pos = Object.fromEntries(Object.entries(v.pos && typeof v.pos === 'object' ? v.pos : {}).filter(([, x]) => typeof x === 'number' && x >= 0 && x < 360));
+    // anything this version does not know is kept as it is, so saving here never strips what a newer version added
+    return Object.assign({}, v, { v: typeof v.v === 'number' ? v.v : PROFILE_V, hide: strs(v.hide), name: map(v.name, () => true), cat: map(v.cat, x => CAT_ORDER.includes(x)), nol: strs(v.nol),
+      groups, grp: map(v.grp, x => groups.some(g => g.id === x)), corners: cleanCorners(v.corners), pos, col: map(v.col, okHex), theme: ['dark', 'light', 'ha'].includes(v.theme) ? v.theme : null });
   };
-  const profStore = { vals: { all: null, user: null, here: null }, user: null, unsubs: [], started: false, sig: '', ls: 'homeRing:here:' + CFG.profile_key };
+  // st: whether each Home Assistant layer has been read ('ok'), is not there on this Home Assistant ('none'), or not yet ('wait')
+  const profStore = { vals: { all: null, user: null, here: null }, st: { all: 'wait', user: 'wait' }, user: null, unsubs: [], started: false, sig: '', ls: 'homeRing:here:' + CFG.profile_key };
+  const profReady = () => profStore.st.all !== 'wait' && profStore.st.user !== 'wait';
+  const profNewer = () => Object.values(profStore.vals).some(v => v && v.v > PROFILE_V);
   const scopeOf = () => profStore.vals.here ? 'here' : profStore.vals.user ? 'user' : 'all';
   function applyProfile() {
     const P = profStore, v = P.vals.here || P.vals.user || P.vals.all || emptyProfile(), sig = JSON.stringify(v);
     if (sig === P.sig) return;
     P.sig = sig; PROF = v; HIDE = new Set(v.hide); NOL = new Set(v.nol);
+    host.setAttribute('data-theme', v.theme || CFG.theme);
     refreshCorners();
     structKey = ''; if (H && root) update(H);
   }
@@ -1768,14 +1944,21 @@ function createRing(sr, host, CFG) {
     const P = profStore; if (P.started || !H) return; P.started = true;
     try { P.vals.here = cleanProfile(JSON.parse(localStorage.getItem(P.ls) || 'null')); } catch (e) {}
     applyProfile();
-    const conn = H.connection; if (!conn || !conn.subscribeMessage) { P.user = false; return; }
-    const sub = (layer, type) => conn.subscribeMessage(m => { P.vals[layer] = cleanProfile(m && m.value); if (layer === 'user') P.user = true; applyProfile(); if (EDIT && !sel && !editPos) controls(); },
-      { type, key: CFG.profile_key }).then(u => { if (destroyed) u(); else P.unsubs.push(u); });
-    sub('all', 'frontend/subscribe_system_data').catch(() => {});
-    sub('user', 'frontend/subscribe_user_data').catch(() => {          // an older Home Assistant: read it once instead
-      if (!H.callWS) { P.user = false; return; }
-      H.callWS({ type: 'frontend/get_user_data', key: CFG.profile_key }).then(r => { P.user = true; P.vals.user = cleanProfile(r && r.value); applyProfile(); }, () => { P.user = false; });
-    });
+    const conn = H.connection; if (!conn || !conn.subscribeMessage) { P.st.all = P.st.user = 'none'; P.user = false; return; }
+    const got = (layer, v) => { P.vals[layer] = cleanProfile(v); P.st[layer] = 'ok'; if (layer === 'user') P.user = true; applyProfile(); if (EDIT && !sel && !editPos && !editKind) controls(); };
+    const none = layer => { P.st[layer] = 'none'; if (layer === 'user') P.user = false; };
+    const again = (layer, n) => timers.push(setTimeout(() => sub(layer, n + 1), retryIn(n)));
+    const sub = (layer, n) => {
+      if (destroyed) return;
+      conn.subscribeMessage(m => got(layer, m && m.value), { type: layer === 'all' ? 'frontend/subscribe_system_data' : 'frontend/subscribe_user_data', key: CFG.profile_key })
+        .then(u => { if (destroyed) u(); else P.unsubs.push(u); }, e => {
+          if (!unknownCmd(e)) { again(layer, n); return; }
+          if (layer === 'all' || !H.callWS) { none(layer); return; }
+          // an older Home Assistant without the user subscription: read it once instead
+          H.callWS({ type: 'frontend/get_user_data', key: CFG.profile_key }).then(r => got('user', r && r.value), e2 => unknownCmd(e2) ? none('user') : again(layer, n));
+        });
+    };
+    sub('all', 0); sub('user', 0);
   }
   async function writeLayer(layer, v) {     // shown at once; put back if Home Assistant says no
     const P = profStore, old = P.vals[layer];
@@ -1787,6 +1970,8 @@ function createRing(sr, host, CFG) {
   // save to the layer in use. Someone who may not write the shared setup gets their own from then on ('user!', or 'here!')
   async function saveProfile(next) {
     const s = scopeOf(), admin = !(H.user && H.user.is_admin === false);
+    if (profNewer()) return 'newer';
+    if (s !== 'here' && !profReady()) return 'wait';
     if (s === 'here') { await writeLayer('here', next); return 'here'; }
     if (s === 'all' && admin && await writeLayer('all', next)) return 'all';
     if (await writeLayer('user', next)) return s === 'user' ? 'user' : 'user!';
@@ -1794,6 +1979,7 @@ function createRing(sr, host, CFG) {
   }
   async function setScope(to) {
     const P = profStore, cur = scopeOf(), rank = { all: 0, user: 1, here: 2 }; if (to === cur) return;
+    if (!profReady() || profNewer()) { toast(profNewer() ? 'This setup was saved by a newer Home Ring. Reload this screen to change it' : 'Still reading your setup from Home Assistant. Try again in a moment'); return; }
     const now = JSON.parse(JSON.stringify(Object.assign({}, PROF, { corners: CORNERS })));
     let ok = true;
     if (rank[to] > rank[cur]) ok = await writeLayer(to, now);
@@ -1839,6 +2025,7 @@ function createRing(sr, host, CFG) {
   $('lock').onclick = async () => {
     if (!H || !root) return;
     const r = await saveShared(layoutStore, LAYOUT ? null : makeLayout()); buzz();
+    if (r === 'wait') { toast('Still reading the saved layout from Home Assistant. Try again in a moment'); return; }
     if (r === null) toast('Only an admin can unlock the shared layout');
     else toast(LAYOUT ? (r === 'all' ? 'Layout locked on every screen' : 'Layout locked in this browser') : 'Layout unlocked');
     lockUi();
@@ -1846,6 +2033,7 @@ function createRing(sr, host, CFG) {
   $('tidy').onclick = async () => {
     if (!H || !root) return;
     const r = await saveShared(layoutStore, makeLayout()); buzz();
+    if (r === 'wait') { toast('Still reading the saved layout from Home Assistant. Try again in a moment'); return; }
     toast(r === 'all' ? 'Rooms tidied and locked on every screen' : 'Rooms tidied and locked in this browser'); lockUi();
   };
   let destroyed = false;
@@ -1908,7 +2096,7 @@ function createRing(sr, host, CFG) {
       root = build(h); setup();
       editN = findSame(editN);
       focus = findSame(was) || root; sel = wsel ? nodes.find(n => n.eid === wsel.eid) || null : null; geom();
-      Object.assign(view, { x0: focus.x0, x1: focus.x1, d: focus.depth }); draw(); labels(); side(); controls();
+      Object.assign(view, { x0: focus.x0, x1: focus.x1, d: focus.depth, r: focus.rot || 0 }); draw(); labels(); side(); controls();
       lastStates = h.states; ringSig = sigOf(h); selSt = sel && h.states[sel.eid];
       renderCorners(); motionCheck(h, true); safetyCheck(h, true); dingCheck(h); hotBtns(); voiceCheck(h); return;
     }
@@ -1922,7 +2110,7 @@ function createRing(sr, host, CFG) {
   }
   function resize() { if (root) { geom(); draw(); labels(); } }
   const clock = setInterval(() => { if (root) hotBtns(); }, 15000);     // "movement" fades after two minutes
-  function destroy() { destroyed = true; for (const st of stores) if (st.unsub) { try { st.unsub(); } catch (e) {} st.unsub = null; } profStore.unsubs.splice(0).forEach(u => { try { u(); } catch (e) {} }); clearInterval(clock); clearInterval(camTimer); stopCams(); clearTimeout(hotAuto); cancelAnimationFrame(anim); }
+  function destroy() { destroyed = true; for (const st of stores) if (st.unsub) { try { st.unsub(); } catch (e) {} st.unsub = null; } profStore.unsubs.splice(0).forEach(u => { try { u(); } catch (e) {} }); timers.splice(0).forEach(clearTimeout); clearInterval(clock); clearInterval(camTimer); stopCams(); clearTimeout(hotAuto); cancelAnimationFrame(anim); }
   return { update, resize, destroy };
 }
 

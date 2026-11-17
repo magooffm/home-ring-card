@@ -9,21 +9,25 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
 - Groups: rooms of your own, holding things from any real rooms.
 - My view / Everything switch.
 
+## Done in 1.6.0
+
+- Places: give each kind (and each system in By system) a fixed spot on the ring, in every room.
+- Colours for kinds, floors, rooms, groups and single things.
+- Look: Dark, Light, or follow Home Assistant's theme, per screen or per person like the rest of the setup.
+- After a Home Assistant restart, an open screen no longer treats an unread setup as an empty one, and never saves over it.
+- The setup keeps fields it does not know, so an older card can no longer strip what a newer one saved.
+
 ## Ideas
 
-### Choose a position on the wheel
+### Positions, continued
 
-- Move a floor, room or thing left or right, and make it bigger or smaller, from its Customise card.
-- Pin a room to a fixed place, for example "Kitchen always at the top".
-- Builds on the layout lock, which already stores the order and size of everything. Start with buttons; dragging on a ring is fiddly and can come later.
+- Move single rooms and floors left or right, and make them bigger or smaller (kinds already have places).
+- A finer dial (12 or 16 spots), or dragging a slice round the ring.
 
-### Colours
+### Colours, continued
 
-- A colour per kind (Lights, Heating, …), replacing the built-in ones.
-- A colour per floor, room or group.
-- A fully custom colour for a single thing.
-- A colour picker in the Customise card, with a "put back" button. Stored in the setup, so it follows the per-screen and per-account choice.
-- Open question: how a custom room colour combines with the temperature tint.
+- How a custom room colour combines with the temperature tint: today the tint wins when the room is warm or cold.
+- Accent colour for the panel and buttons.
 
 ### PIN pad
 
@@ -33,6 +37,19 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
   - This is a guard against curious hands on a wall tablet, not real security: the card runs in the browser, and anyone who can reach another dashboard or Home Assistant's own controls can get round it. The README must say so.
   - The PIN is stored hashed in the setup, never in plain text. Changing it needs an admin or the old PIN.
   - Decide how long an unlock lasts (one action, or a minute or two).
+
+### Tap to switch
+
+- Choose what a tap on a thing does: open its card (today) or switch it, with a hold doing the other.
+- Stored in the setup, so a wall tablet can be tap-to-switch while a phone keeps the cards. Possibly per kind.
+- Locks and sirens always keep their two-tap confirmation. Thermostats still open their card.
+
+### Home Assistant's own cards
+
+- Tap a thing to open Home Assistant's own pop-up directly, instead of the ring's card.
+- Or show real dashboard cards (tile, thermostat, media) in the side panel in place of the hand-built ones, with a card definition per kind, including installed custom cards.
+- Embedded cards follow the Home Assistant theme, so this goes with the colour and theme work.
+- Check on a real Home Assistant first: the helper for creating other cards is widely used but not a guaranteed interface.
 
 ### Custom views
 

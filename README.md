@@ -26,7 +26,7 @@ Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there
 - **Scenes** sit in a band around the outside. Tap one to run it.
 - **Layout lock.** Tap **Lock layout** and every room stays exactly where it is. New devices squeeze into their room, and a new room starts slim at the end of its floor, so the rooms you know move a degree or two at most. **Re-tidy** lays everything out afresh. The lock is kept in Home Assistant, so every screen shows the same ring.
 - **By room or By system.** Switch the ring to Lights, Heating, Energy, TV & music, Security and Blinds, each split by room. Energy can include your solar, battery and grid readings.
-- **Customise on screen.** Tap the gear beside the ring to hide things, rooms and floors, rename them, move a thing to another kind and choose the corner buttons. Each screen or each person can have their own setup. See [Customise](#customise).
+- **Customise on screen.** Tap the gear beside the ring to hide things, rooms and floors, rename them, move a thing to another kind, give kinds a fixed place and a colour, pick a light or dark look, and choose the corner buttons. Each screen or each person can have their own setup. See [Customise](#customise).
 - **Four corner buttons**, Cameras, Lights, Alarm and Heating to start with. Tap one for its card and hold it for its quick action. Tap the gear to change what each corner does. Choose from:
   - **Cameras** opens a grid of stills, and opens by itself when a doorbell rings.
   - **Lights:** hold to switch the whole house.
@@ -227,6 +227,7 @@ layout_lock: true
 | `hot_buttons` | `true` | The four corner buttons |
 | `corners` | `[cams, lights, alarm, heat]` | Starting choice for the corners: top left, top right, bottom left, bottom right. Kinds: `cams`, `lights`, `alarm`, `heat`, `media`, `scenes`, `doors`, `energy`, `blinds`, `fans`, `plugs`, `room:<area id>`, `none`. A choice made with Customise overrides it |
 | `animation_speed` | `100` | How fast the ring glides into a room: `0` is instant, `100` the normal 0.75 s. Each screen can change it in Customise |
+| `theme` | `dark` | Starting look: `dark`, `light` or `ha` (follow Home Assistant's theme). A look chosen in Customise overrides it |
 | `customise` | `true` | Show the gear that starts Customise. A saved setup still applies when it is `false` |
 | `profile_key` | `home_ring_profile` | Name the Customise setup is saved under; give two rings different keys to set them up separately |
 | `corners_key` | `home_ring_corners` | Where corners chosen before 1.5 were saved. They still apply until a setup chooses its own |
@@ -256,12 +257,36 @@ The view stays where it is while you customise. Tap anything you can see, a floo
   - **Group.** Put it in a room of your own. See [Groups](#groups-rooms-of-your-own).
   - **Holding its room, and "all lights".** Choose whether a light is switched with its room and the house.
   - **Hide from the ring.**
-- **Tap a floor, room or kind** to rename or hide it. Its card also lists what is in it, with an eye beside each one to hide it.
+- **Tap a floor, room or kind** to rename or hide it, or give it a colour. Its card also lists what is in it, with an eye beside each one to hide it.
+- **Tap a kind** (Lights, Blinds, …) inside a room to give it a place on the ring and a colour. See [Places and colours](#places-and-colours).
 - **Tap the centre** for the place you are in. That card also has **This setup is for** and the animation speed.
 - **Hidden things** are listed at the bottom of the card for their room, their floor and the whole house. Tap the crossed-out eye to bring one back.
 - **Tap a corner button** to pick what it does.
 
 Every change is saved at once. Hiding and renaming here change only the ring, not Home Assistant.
+
+### Places and colours
+
+**A place for each kind.** Tap a kind inside any room, for example Blinds, and pick one of the eight spots on the small dial: top, top right, right and so on. Blinds then sit at that spot in every room that has blinds. Pick a few: Lights top right, Blinds top left, Heating at the bottom. Kinds without a place fill the widest gap between the placed ones.
+
+- The ring turns each room so the placed kinds sit as close to their spots as their sizes allow. A kind that takes up half a room cannot sit exactly at one spot, but it stays on that side.
+- Two kinds can share a spot; they then sit side by side.
+- In **By system** the same places apply to the systems: Lights, Heating, Blinds & valves and so on.
+- **Auto** in the middle of the dial puts a kind back in the usual order.
+
+**Colours.**
+
+| What | Where to change it | What it colours |
+|---|---|---|
+| A kind | Tap the kind in a room | Its things when they are on, and the kind's slice, in every room. Also the matching corner button |
+| A floor, room or group | Tap it | Its slice and everything inside it |
+| One thing | Tap it | That thing when it is on |
+
+Pick one of the quick colours, or the rainbow dot for any colour (the ring shows it while you choose). **Automatic** puts the built-in colour back.
+
+You can also reach every kind from the first Customise card (tap the centre at Home): it lists them all with their place, so you can set up a kind no room on screen shows.
+
+**Look.** The first Customise card also has **Look**: **Dark** (the built-in look), **Light**, or **Home Assistant**, which follows your Home Assistant theme. Like everything else in the setup it can differ per screen or per person, so a wall tablet can stay dark while phones follow Home Assistant.
 
 ### Groups: rooms of your own
 
@@ -303,7 +328,7 @@ The card you get when Customise starts (or when you tap the centre) shows **This
 - Choosing a wider one takes a second tap, because the narrower setup is dropped.
 - If someone who is not an admin changes the shared setup, they get their own copy for their account.
 
-The setup holds what is hidden, the names, the kinds, the groups and the corners. The layout lock is separate and stays shared.
+The setup holds what is hidden, the names, the kinds, the groups, the places, the colours, the look and the corners. The layout lock is separate and stays shared.
 
 ### Corner buttons
 
@@ -348,7 +373,8 @@ The ring moves when it's on screen. To also switch a tablet to the ring's view, 
 
 ## Good to know
 
-- **Looks:** the card has its own dark look, made for wall tablets. It doesn't follow light themes.
+- **Looks:** the card has its own dark look, made for wall tablets. Choose **Light** or **Home Assistant** under Customise → Look, or set `theme:` in the card.
+- **After a Home Assistant restart** an open screen may show the plain ring for a few seconds while Home Assistant starts. The card keeps asking for your saved setup and shows it as soon as it can; changes made in that moment are refused rather than saved over it.
 - **Privacy:** the card talks only to your own Home Assistant, through the connection the dashboard already has. It sends nothing anywhere else, has no tracking, and loads nothing from the internet.
 - **Safety:** disarming the alarm always needs the code, through Home Assistant's keypad. Arming from the ring only works when your alarm doesn't ask for a code to arm.
 
