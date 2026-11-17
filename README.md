@@ -8,7 +8,7 @@ The centre is where you are. The rings around it are your floors, then rooms, th
 
 *A made-up demo house.*
 
-Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there is nothing to list by hand. **Every device with a room is on the ring.** Give a new device a room and it appears within a second or two, whatever kind of device it is.
+Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there is nothing to list by hand. **Every device with a room is on the ring** (Sensors and Other once you pick them in the bar). Give a new device a room and it appears within a second or two, whatever kind of device it is.
 
 ## What it does
 
@@ -26,6 +26,8 @@ Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there
 - **Scenes** sit in a band around the outside. Tap one to run it.
 - **Layout lock.** Tap **Lock layout** and every room stays exactly where it is. New devices squeeze into their room, and a new room starts slim at the end of its floor, so the rooms you know move a degree or two at most. **Re-tidy** lays everything out afresh. The lock is kept in Home Assistant, so every screen shows the same ring.
 - **By room or By system.** Switch the ring to Lights, Heating, Energy, TV & music, Security and Blinds, each split by room. Energy can include your solar, battery and grid readings.
+- **The bar above the ring.** Pick which kinds are shown: tap **Lights** and the ring shows only rooms with lights, and only their lights, so you can go Floor → Room → the light you want in three taps. Tap more kinds to add them, **All** to go back. On a phone the bar shows the main kinds, with **+ more** for the rest. By room / By system and Lock layout live here too.
+- **Readable at a glance.** The ring draws two rings at a time (floors and rooms at Home, kinds and things in a room), so names fit. Sensors and Other, usually the busiest kinds, are left out of All until you pick them in the bar.
 - **Customise on screen.** Tap the gear beside the ring to hide things, rooms and floors, rename them, move a thing to another kind, give kinds a fixed place and a colour, pick a light or dark look, and choose the corner buttons. Each screen or each person can have their own setup. See [Customise](#customise).
 - **Four corner buttons**, Cameras, Lights, Alarm and Heating to start with. Tap one for its card and hold it for its quick action. Tap the gear to change what each corner does. Choose from:
   - **Cameras** opens a grid of stills, and opens by itself when a doorbell rings.
@@ -77,7 +79,7 @@ A short checklist before you install. Most problems come from the first two.
 14. **Solar, battery and grid readings** need `energy:` in the card. Add `invert: true` if a reading's plus and minus run the wrong way.
 15. **Voice** ("show me the kitchen") is optional: two files to copy, a restart, and `voice_entity` in the card.
 16. **Wall tablets:** use a panel view with `height: calc(100vh - 56px)` (or `100vh - 16px` with the header hidden). On a slow tablet, set the animation speed to Instant in Customise.
-17. **Busy rooms get thin slices.** Hide what you never use (the gear, then the eye beside it) to keep the ring readable.
+17. **Busy rooms get thin slices.** The ring shows two rings at a time, and Sensors and Other only when picked in the bar. Hide what you never use (the gear, then the eye beside it) to keep it readable.
 18. **Easiest of all:** run the template in [AI_SETUP.md](AI_SETUP.md) and give the result to an AI with its prompt. It writes your card and lists every device that still needs a room.
 
 ## Install
@@ -226,6 +228,8 @@ layout_lock: true
 | `scenes` | `true` | Scene band: `true`, `false`, or a list |
 | `hot_buttons` | `true` | The four corner buttons |
 | `corners` | `[cams, lights, alarm, heat]` | Starting choice for the corners: top left, top right, bottom left, bottom right. Kinds: `cams`, `lights`, `alarm`, `heat`, `media`, `scenes`, `doors`, `energy`, `blinds`, `fans`, `plugs`, `room:<area id>`, `none`. A choice made with Customise overrides it |
+| `levels` | `2` | How many rings are drawn at once beyond where you are: `2`, `3`, `4` or `all`. Each screen can change it in Customise |
+| `quiet_kinds` | `[readings, other]` | Kinds left out of **All** in the bar until picked: `readings` is Sensors. `[]` shows every kind |
 | `animation_speed` | `100` | How fast the ring glides into a room: `0` is instant, `100` the normal 0.75 s. Each screen can change it in Customise |
 | `theme` | `dark` | Starting look: `dark`, `light` or `ha` (follow Home Assistant's theme). A look chosen in Customise overrides it |
 | `customise` | `true` | Show the gear that starts Customise. A saved setup still applies when it is `false` |
@@ -278,9 +282,11 @@ Every change is saved at once. Hiding and renaming here change only the ring, no
 
 | What | Where to change it | What it colours |
 |---|---|---|
-| A kind | Tap the kind in a room | Its things when they are on, and the kind's slice, in every room. Also the matching corner button |
-| A floor, room or group | Tap it | Its slice and everything inside it |
-| One thing | Tap it | That thing when it is on |
+| A kind | Tap the kind in a room | The kind's slice and its things, in every room and in By system: faint when off, strong when on. Also the matching corner button |
+| A floor, room or group | Tap it | The floor's or room's slice (a floor also colours its rooms). The things inside keep their kind's colour |
+| One thing | Tap it | That thing, instead of its kind's colour |
+
+Floors start with colours from a fixed set of five, in floor order; rooms take their floor's colour, every other one a shade lighter, and lean blue or orange with their thermostat's temperature.
 
 Pick one of the quick colours, or the rainbow dot for any colour (the ring shows it while you choose). **Automatic** puts the built-in colour back.
 
@@ -302,7 +308,7 @@ Nothing changes in Home Assistant; its areas and floors stay as they are.
 
 ### My view and Everything
 
-Once you have hidden something or made a group, the panel shows a second switch:
+Once you have hidden something or made a group, the bar above the ring shows a second switch:
 
 | View | What it shows |
 |---|---|
@@ -337,6 +343,10 @@ In Customise the four corners get a dashed outline. Tap one and pick what it sho
 ![Choosing what a corner does](images/customise.jpg)
 
 To fix the corners in YAML instead, set `corners:` and `customise: false`.
+
+### Rings shown at once
+
+The first Customise card (tap the centre at Home) has **Rings shown at once**: **Two** (the default), **Three** or **All**. Fewer rings give each one more room, so names fit; go into a floor or room to see what is in it. It is saved for that screen only.
 
 ### Animation speed
 

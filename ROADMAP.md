@@ -17,6 +17,12 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
 - After a Home Assistant restart, an open screen no longer treats an unread setup as an empty one, and never saves over it.
 - The setup keeps fields it does not know, so an older card can no longer strip what a newer one saved.
 
+## Done in 1.7.0
+
+- A bar above the ring: pick the kinds to show (one kind drops the kind ring entirely), By room / By system, Lock layout.
+- Two rings at a time by default, set per screen.
+- Sensors and Other left out of All unless picked.
+
 ## Ideas
 
 ### Positions, continued
@@ -58,6 +64,10 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
 - Needs the built-in systems table turned into data.
 
 ### Smaller things
+
+- Full name of a cut-off slice on hover or touch, shown in the centre.
+- "+5 more" slice for rooms with many tiny slices.
+- Search: type a name and the ring jumps there.
 
 - Hide scenes on screen (today that needs `scenes:` or `exclude` in YAML).
 - An "Unassigned" segment in the Everything view for things with no room in Home Assistant.
