@@ -18,8 +18,8 @@ Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there
 - **Safety alerts.** When a water leak, smoke, gas or carbon monoxide sensor goes off, its room flashes and its card opens.
 
 - **Tap** a floor, room or kind to go in. Tap the centre to go back out.
-- **Tap a thing** to open its card: brightness, colour, colour temperature and effects for lights; target, modes and a 24-hour graph for thermostats; play, volume and source for media; open, stop and close for blinds; stills for cameras.
-- **Hold** a light, switch, fan or speaker to switch it. **Hold a room** to switch all its lights: off if any are on, otherwise on.
+- **Tap a light, switch, fan, speaker or blind** to switch it. **Tap anything else** (a thermostat, sensor, camera, lock), or **hold any thing**, to open Home Assistant's own controls for it. Locks, sirens and the alarm never switch on a tap.
+- **Hold a room** to switch all its lights: off if any are on, otherwise on.
 - **Slide** up or down on a dimmable light to set its brightness, without opening anything.
 - **Room colours follow the temperature.** A room with a thermostat leans blue when it's cold and orange when it's warm.
 - **Motion makes the room pulse**, so you can see someone walk through the house.
@@ -29,7 +29,8 @@ Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there
 - **The bar above the ring.** Pick which kinds are shown: tap **Lights** and the ring shows only rooms with lights, and only their lights, so you can go Floor → Room → the light you want in three taps. Tap more kinds to add them, **All** to go back. On a phone the bar shows the main kinds, with **+ more** for the rest. By room / By system and Lock layout live here too.
 - **Readable at a glance.** The ring draws two rings at a time (floors and rooms at Home, kinds and things in a room), so names fit. Sensors and Other, usually the busiest kinds, are left out of All until you pick them in the bar.
 - **Customise on screen.** Tap the gear beside the ring to hide things, rooms and floors, rename them, move a thing to another kind, give kinds a fixed place and a colour, pick a light or dark look, and choose the corner buttons. Each screen or each person can have their own setup. See [Customise](#customise).
-- **Four corner buttons**, Cameras, Lights, Alarm and Heating to start with. Tap one for its card and hold it for its quick action. Tap the gear to change what each corner does. Choose from:
+- **Ring only, or ring and panel.** By default the ring has the card to itself. Choose **Ring, corners and panel** in Customise (or `layout: full`) for the side panel with each thing's own card and the four corner buttons below. The panel always appears while you customise.
+- **Four corner buttons** (with `layout: full`), Cameras, Lights, Alarm and Heating to start with. Tap one for its card and hold it for its quick action. Tap the gear to change what each corner does. Choose from:
   - **Cameras** opens a grid of stills, and opens by itself when a doorbell rings.
   - **Lights:** hold to switch the whole house.
   - **Alarm** arms from the ring. Disarming always goes through Home Assistant's own keypad.
@@ -226,7 +227,8 @@ layout_lock: true
 | `strip_prefixes` | none | Words removed from the start of names |
 | `lights_exclude` | none | Lights left out of house and room switching |
 | `scenes` | `true` | Scene band: `true`, `false`, or a list |
-| `hot_buttons` | `true` | The four corner buttons |
+| `layout` | `ring` | `ring`: the ring on its own; tap to switch, hold for Home Assistant's controls. `full`: with the corner buttons and the side panel, where a tap opens the thing's card and a hold switches it. Each screen can change it in Customise |
+| `hot_buttons` | `true` | The four corner buttons (with `layout: full`) |
 | `corners` | `[cams, lights, alarm, heat]` | Starting choice for the corners: top left, top right, bottom left, bottom right. Kinds: `cams`, `lights`, `alarm`, `heat`, `media`, `scenes`, `doors`, `energy`, `blinds`, `fans`, `plugs`, `room:<area id>`, `none`. A choice made with Customise overrides it |
 | `levels` | `2` | How many rings are drawn at once beyond where you are: `2`, `3`, `4` or `all`. Each screen can change it in Customise |
 | `quiet_kinds` | `[readings, other]` | Kinds left out of **All** in the bar until picked: `readings` is Sensors. `[]` shows every kind |
@@ -336,7 +338,16 @@ The card you get when Customise starts (or when you tap the centre) shows **This
 
 The setup holds what is hidden, the names, the kinds, the groups, the places, the colours, the look and the corners. The layout lock is separate and stays shared.
 
+### Layout
+
+The first Customise card (tap the centre at Home) has **Layout**: **Ring only** or **Ring, corners and panel**. It is saved for that screen only, so a wall tablet can keep the corner buttons and the panel while a phone shows just the ring.
+
+- **Ring only:** tap a light, switch, fan, speaker or blind to switch it; tap anything else, or hold any thing, for Home Assistant's own controls. A doorbell opens its camera, and a leak or smoke alarm opens its sensor, in Home Assistant's dialog.
+- **Ring, corners and panel:** tap a thing for its card in the panel, hold to switch it, and use the corner buttons.
+
 ### Corner buttons
+
+Only with **Ring, corners and panel**.
 
 In Customise the four corners get a dashed outline. Tap one and pick what it should do.
 

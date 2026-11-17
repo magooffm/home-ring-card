@@ -23,6 +23,10 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
 - Two rings at a time by default, set per screen.
 - Sensors and Other left out of All unless picked.
 
+## Done in 1.7.1
+
+- Ring only (the new default): no corners or panel, the ring has the whole card. Tap a light, switch, fan, speaker or blind to switch it; tap anything else or hold any thing for Home Assistant's own dialog. The panel shows only while customising. `layout: full` or Customise brings corners and panel back, per screen.
+
 ## Ideas
 
 ### Positions, continued
@@ -44,17 +48,10 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
   - The PIN is stored hashed in the setup, never in plain text. Changing it needs an admin or the old PIN.
   - Decide how long an unlock lasts (one action, or a minute or two).
 
-### Tap to switch
+### Home Assistant's own cards in the panel
 
-- Choose what a tap on a thing does: open its card (today) or switch it, with a hold doing the other.
-- Stored in the setup, so a wall tablet can be tap-to-switch while a phone keeps the cards. Possibly per kind.
-- Locks and sirens always keep their two-tap confirmation. Thermostats still open their card.
-
-### Home Assistant's own cards
-
-- Tap a thing to open Home Assistant's own pop-up directly, instead of the ring's card.
-- Or show real dashboard cards (tile, thermostat, media) in the side panel in place of the hand-built ones, with a card definition per kind, including installed custom cards.
-- Embedded cards follow the Home Assistant theme, so this goes with the colour and theme work.
+- With `layout: full`, show real dashboard cards (tile, thermostat, media) in the side panel in place of the hand-built ones, with a card definition per kind, including installed custom cards.
+- Embedded cards follow the Home Assistant theme, so this goes with the Look setting.
 - Check on a real Home Assistant first: the helper for creating other cards is widely used but not a guaranteed interface.
 
 ### Custom views

@@ -7,7 +7,7 @@
  * slide on a light to dim it. Everything comes from Home Assistant's own floors, areas and entities, so new
  * devices appear by themselves once they have a room.
  */
-const HOME_RING_VERSION = '1.7.0';
+const HOME_RING_VERSION = '1.7.1';
 
 const HR_CSS = `
 :host{
@@ -115,6 +115,9 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 #gear.on{color:#0a0f16;background:var(--light);border-color:var(--light);}
 #gear:active{transform:scale(.94);} #gear:focus-visible{box-shadow:0 0 0 2px var(--ink);}
 #app.nohots #gear{right:0;}
+#app.ringonly:not(.editing):not(.mini){grid-template-columns:minmax(0,1fr);}
+#app.ringonly:not(.editing) #side{display:none;}
+#app.ringonly:not(.mini) .hots{display:none !important;}   /* also on narrow cards, where the corners otherwise become a row */
 #ctl .txt{flex:1 1 140px;min-width:0;background:var(--hub);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:16px;}
 #ctl .txt:focus{outline:none;border-color:var(--light);}
 #ctl .seg{margin-top:8px;}
@@ -412,6 +415,8 @@ function normaliseConfig(c) {
     corners: c.corners || null,
     corners_key: String(c.corners_key || 'home_ring_corners'),
     customise: c.customise !== false,
+    // 'ring': the ring on its own, tap to switch and Home Assistant's own dialog; 'full': with the corner buttons and the side panel
+    layout: c.layout === 'full' ? 'full' : 'ring',
     profile_key: String(c.profile_key || 'home_ring_profile'),
     theme: ['light', 'ha'].includes(c.theme) ? c.theme : 'dark',
     animation_speed: clamp(num(c.animation_speed) ?? 100, 0, 100),
@@ -444,6 +449,9 @@ function createRing(sr, host, CFG) {
   if (MINI) FILTER = null;
   let LEVELS = MINI ? MINI_LEVELS : (() => { const v = LS.get('homeRingLevels'); return v == null ? CFG.levels : clamp(+v || 0, 0, 4); })();
   const QUIET = new Set(CFG.quiet_kinds);
+  let RINGONLY = !MINI && (LS.get('homeRingLayout') || CFG.layout) === 'ring';
+  const applyLayout = () => { $('app').classList.toggle('ringonly', RINGONLY); $('app').classList.toggle('nohots', RINGONLY || !CFG.hot_buttons); };
+  applyLayout();
   const shows = c => c === 'power' || (FILTER ? FILTER.includes(c) : !QUIET.has(c));
   const filtering = () => !MINI && (!!FILTER || QUIET.size > 0);
   // animation speed, per screen: 0 = instant, 100 = the normal glide (0.75 s). Set in Customise.
@@ -946,6 +954,10 @@ function createRing(sr, host, CFG) {
   let press = null;
   const domOf = n => n.eid.split('.')[0];
   const canToggle = n => n && n.kind === 'ent' && ['light', 'switch', 'fan', 'media_player', 'input_boolean'].includes(domOf(n)) && !unavail(states()[n.eid]);
+  // ring only: a tap switches lights, switches, fans, speakers and blinds; anything else (and every hold) opens Home Assistant's
+  // own dialog. Locks, sirens and the alarm never switch on a tap.
+  const tapSwitches = n => canToggle(n) || (n && n.kind === 'ent' && domOf(n) === 'cover' && !unavail(states()[n.eid]));
+  function tapThing(n) { if (tapSwitches(n)) toggleThing(n); else { buzz(); moreInfo(n.eid); } }
   const canDim = n => { if (!n || n.kind !== 'ent' || domOf(n) !== 'light') return false; const st = states()[n.eid]; return !unavail(st) && ((st.attributes || {}).supported_color_modes || []).some(m => m !== 'onoff'); };
   const briOf = n => { const st = states()[n.eid], a = (st && st.attributes) || {}; return st && st.state === 'on' ? (a.brightness != null ? Math.round(a.brightness / 2.55) : 100) : 0; };
   function select(n) {
@@ -1013,6 +1025,7 @@ function createRing(sr, host, CFG) {
         const eid = e.eid; FILTER = null; LS.set('homeRingFilter', 'null');
         setTimeout(() => { structKey = ''; update(H); const m = nodes.find(x => x.eid === eid); if (m) { sel = m; hot = null; nodes.forEach(paint); controls(); hotBtns(); } }, 0);
       } else { sel = twinOf(e); hot = null; nodes.forEach(paint); controls(); hotBtns(); }
+      if (RINGONLY) moreInfo(e.eid);
       try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (x) {}
       toast((SAFETY_LABEL[(st.attributes || {}).device_class] || 'Alarm') + ' · ' + roomName(e));
     }
@@ -1027,7 +1040,8 @@ function createRing(sr, host, CFG) {
       if (!press || press.sliding) return;
       press.held = true;
       if (EDIT) return;                                     // Customise: a hold is just a tap
-      if (canToggle(n)) { toggleThing(n); select(n); }
+      if (RINGONLY && n.kind === 'ent') { buzz(); moreInfo(n.eid); }
+      else if (canToggle(n)) { toggleThing(n); select(n); }
       else if (n.kind === 'ent') { buzz(); select(n); }
       else if (n.kind === 'area' || (n.kind === 'cat' && n.cat === 'lights')) toggleRoomLights(n);
     }, HOLD_MS);
@@ -1054,14 +1068,14 @@ function createRing(sr, host, CFG) {
     }
     if (EDIT) { editPick(p.n); return; }
     if (p.held) return;
-    if (p.n.kind === 'ent') select(p.n); else setFocus(p.n);
+    if (p.n.kind === 'ent') { if (RINGONLY) tapThing(p.n); else select(p.n); } else setFocus(p.n);
   });
   svg.addEventListener('pointercancel', () => { if (press) { clearTimeout(press.timer); press = null; hideSlide(); } });
   svg.addEventListener('pointerleave', () => { if (!press) hover(null); });
   svg.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return; const n = nodeOf(e.target); if (!n) return; e.preventDefault();
     if (EDIT) { editPick(n); return; }
-    if (n.kind === 'ent') select(n); else setFocus(n);
+    if (n.kind === 'ent') { if (RINGONLY) tapThing(n); else select(n); } else setFocus(n);
   });
 
   /* ---------- the side: where you are, the selected thing's card, and everything under the focus ---------- */
@@ -1496,12 +1510,13 @@ function createRing(sr, host, CFG) {
   });
   // a doorbell press opens the Cameras card on that door (and closes it after a minute unless someone uses it)
   function dingCheck(h) {
-    if (MINI || !CFG.hot_buttons) return;
+    if (MINI || (!CFG.hot_buttons && !RINGONLY)) return;
     for (const c of camList()) {
       const eid = c.doorbell; if (!eid) continue;
       const st = h.states[eid]; if (!st) continue;
       const was = dingSeen[eid]; dingSeen[eid] = st.last_changed;
       if (was === undefined || was === st.last_changed || st.state !== 'on' || EDIT) continue;
+      if (RINGONLY) { buzz(); toast(`Doorbell · ${c.name}`); moreInfo(c.srcs.find(x => states()[x]) || c.srcs[0]); continue; }
       hot = 'cams'; hotCam = c.id; if (sel) { sel = null; nodes.forEach(paint); }
       controls(); hotBtns(); buzz(); toast(`Doorbell · ${c.name}`);
       clearTimeout(hotAuto); hotAuto = setTimeout(() => { hotAuto = null; if (hot === 'cams') { hot = null; controls(); hotBtns(); } }, 60000);
@@ -1831,7 +1846,7 @@ function createRing(sr, host, CFG) {
     const items = t.kind === 'area' ? leaves(t) : t.kids, hid = VIEW === 'all' ? [] : hiddenUnder(t), L = leaves(t).length;
     el.style.setProperty('--sc', 'var(--light)');
     let h = `<div class="h"><i></i>${home ? 'Customise' : 'Customise · ' + esc(t.name)}<button class="x" data-a="${held ? 'unhold' : 'done'}" aria-label="${held ? 'Close' : 'Done'}">✕</button></div>
-      <div class="st">${home ? '' : esc(`${t.sys ? 'System' : t.virtual ? 'Group' : KIND_WORD[t.kind]} · ${L} thing${L === 1 ? '' : 's'}`) + (held ? '' : ' · ')}${held ? '' : 'Tap anything on the ring to rename, move or hide it, or a corner button to choose what it does.'}</div>`;
+      <div class="st">${home ? '' : esc(`${t.sys ? 'System' : t.virtual ? 'Group' : KIND_WORD[t.kind]} · ${L} thing${L === 1 ? '' : 's'}`) + (held ? '' : ' · ')}${held ? '' : 'Tap anything on the ring to rename, move or hide it' + (RINGONLY ? '.' : ', or a corner button to choose what it does.')}</div>`;
     if (canRename(t)) h += nameRow(t);
     if (items.length) h += `<div class="lbl">${home ? 'On the ring' : 'In ' + esc(t.name)} · tap the eye to hide</div><div class="erows">` + items.map(n =>
       `<div class="erow${isHid(n) ? ' off' : ''}"><button class="en" data-go="${n.i}">${esc(n.name)}<small>${esc(n.kind === 'ent' ? CATS[n.cat].name : leaves(n).length + ' thing' + (leaves(n).length === 1 ? '' : 's'))}</small></button>` +
@@ -1856,6 +1871,8 @@ function createRing(sr, host, CFG) {
       h += `<div class="lbl">This setup is for</div><div class="seg" role="group" aria-label="This setup is for">${['all', 'user', 'here'].filter(x => x !== 'user' || profStore.user !== false || sc === 'user')
         .map(x => `<button data-scope="${x}" class="${x === sc ? 'on' : ''}" aria-pressed="${x === sc}">${SCOPE_NAME[x]}</button>`).join('')}</div>
         <div class="note" id="scopev" style="margin-top:8px">${esc(SCOPE_NOTE[sc])}${sc === 'all' && H.user && H.user.is_admin === false ? ' Only an admin can change it: your changes are saved for your account.' : ''}</div>
+        <div class="lbl">Layout · this screen</div><div class="seg" role="group" aria-label="Layout">${[['ring', 'Ring only'], ['full', 'Ring, corners and panel']].map(([v, nm]) => `<button data-layout="${v}" class="${(v === 'ring') === RINGONLY ? 'on' : ''}" aria-pressed="${(v === 'ring') === RINGONLY}">${nm}</button>`).join('')}</div>
+        <div class="note" style="margin-top:6px">${RINGONLY ? 'Tap a light, switch, fan, speaker or blind to switch it; tap anything else, or hold any thing, for Home Assistant’s own controls. The panel shows only while you customise.' : 'Tap a thing for its card in the panel; hold to switch it. The corner buttons open their cards.'}</div>
         <div class="lbl">Rings shown at once · this screen</div><div class="seg" role="group" aria-label="Rings shown at once">${[[2, 'Two'], [3, 'Three'], [0, 'All']].map(([v, nm]) => `<button data-levels="${v}" class="${v === LEVELS ? 'on' : ''}" aria-pressed="${v === LEVELS}">${nm}</button>`).join('')}</div>
         <div class="note" style="margin-top:6px">Fewer rings give each one more room, so names fit. Go into a room to see what is in it.</div>
         <div class="lbl">Animation speed · this screen</div>
@@ -1865,6 +1882,10 @@ function createRing(sr, host, CFG) {
       const r = el.querySelector('[data-a="speed"]');
       r.oninput = () => { SPEED = +r.value; const n = el.querySelector('#speedv'); if (n) n.textContent = 'Going into a room: ' + speed(SPEED); };
       r.onchange = () => { LS.set('homeRingSpeed', String(SPEED)); buzz(); toast('Animation: ' + speed(SPEED)); };
+      el.querySelectorAll('[data-layout]').forEach(b => b.onclick = () => {
+        const v = b.dataset.layout === 'ring'; if (v === RINGONLY) return; RINGONLY = v; LS.set('homeRingLayout', b.dataset.layout); buzz();
+        applyLayout(); renderCorners(); hotBtns(); controls(); toast(v ? 'Ring only' : 'Ring, corners and panel');
+      });
       el.querySelectorAll('[data-levels]').forEach(b => b.onclick = () => {
         const v = +b.dataset.levels; if (v === LEVELS) return; LEVELS = v; LS.set('homeRingLevels', String(v)); buzz();
         toast(v ? 'Rings at once: ' + v : 'All rings at once'); geom(); draw(); labels(); controls();

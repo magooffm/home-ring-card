@@ -19,6 +19,14 @@
   .mini{max-width:560px;}
   body.shot header,body.shot .bar,body.shot .mini{display:none;}
   body.shot main{padding:0;max-width:none;}
+  /* a stand-in for Home Assistant's own device dialog, which only exists inside Home Assistant */
+  dialog{background:#141c27;color:var(--text);border:1px solid var(--line);border-radius:18px;padding:18px 20px;width:min(420px,calc(100vw - 32px));}
+  dialog::backdrop{background:rgba(0,0,0,.55);}
+  dialog h2{margin:0 0 2px;font-size:18px;} dialog .st{color:var(--muted);font-size:13px;margin-bottom:12px;}
+  dialog table{width:100%;font-size:13px;border-collapse:collapse;} dialog td{padding:4px 0;border-top:1px solid var(--line);} dialog td+td{text-align:right;color:var(--muted);}
+  dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+  dialog button{all:unset;cursor:pointer;font-size:13px;font-weight:700;padding:7px 13px;border-radius:999px;border:1px solid var(--line);}
+  dialog small{display:block;margin-top:12px;color:var(--muted);font-size:12px;}
 </style>
 </head>
 <body>
@@ -34,6 +42,8 @@
     <div class="mini"><home-ring-card id="mini"></home-ring-card></div>
   </div>
 </main>
+<dialog id="mi"><h2></h2><div class="st"></div><table></table><div class="row"><button data-act="toggle">Toggle</button><button data-act="close">Close</button></div>
+  <small>In Home Assistant this is its own device dialog, with full controls and history.</small></dialog>
 <script>/*INLINE:demo/demo-house.js*/</script>
 <script>/*INLINE:dist/home-ring-card.js*/</script>
 <script>
@@ -58,6 +68,21 @@
     voice_entity: 'input_text.home_ring_focus',
   });
   mini.setConfig({ mini: true, height: '230px' });
+  // the card asks Home Assistant to open its device dialog with this event; the demo shows a simple stand-in
+  const mi = document.getElementById('mi');
+  const showMi = eid => {
+    const st = hass.states[eid]; if (!st) return;
+    mi.dataset.eid = eid; mi.querySelector('h2').textContent = st.attributes.friendly_name || eid;
+    mi.querySelector('.st').textContent = eid + ' · ' + st.state;
+    mi.querySelector('table').innerHTML = Object.entries(st.attributes).filter(([k, v]) => v != null && typeof v !== 'object' && !/picture|friendly/.test(k)).slice(0, 10)
+      .map(([k, v]) => `<tr><td>${k.replace(/_/g, ' ')}</td><td>${String(v).replace(/[<>&]/g, '')}</td></tr>`).join('');
+    if (!mi.open) mi.showModal();
+  };
+  document.addEventListener('hass-more-info', e => showMi(e.detail.entityId));
+  mi.addEventListener('click', e => {
+    const a = e.target.dataset && e.target.dataset.act; if (e.target === mi || a === 'close') { mi.close(); return; }
+    if (a === 'toggle') { const eid = mi.dataset.eid; hass.callService(eid.split('.')[0], 'toggle', { entity_id: eid }); setTimeout(() => showMi(eid), 50); }
+  });
   let hass;
   const push = h => { hass = h; full.hass = h; mini.hass = h; };
   push(HomeRingDemo.makeHass(push));

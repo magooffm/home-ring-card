@@ -183,6 +183,7 @@
             set(eid, new Date().toISOString());
             for (const [e, [s, b]] of Object.entries(SCENES[eid] || {})) { if (s === 'on') lightOn(e, { brightness_pct: b }); else set(e, 'off', { brightness: null }); }
           }
+          else if (domain === 'cover' && service === 'toggle') { const o = st.state === 'open' || st.state === 'opening'; set(eid, o ? 'closed' : 'open', { current_position: o ? 0 : 100 }); }
           else if (service === 'toggle') { if (eid.startsWith('light.') && st.state !== 'on') lightOn(eid, {}); else set(eid, st.state === 'on' ? 'off' : 'on'); }
           else if (service === 'turn_on') { if (domain === 'light') lightOn(eid, data); else set(eid, domain === 'media_player' ? 'idle' : 'on'); }
           else if (service === 'turn_off') set(eid, 'off', domain === 'light' ? { brightness: null } : {});
