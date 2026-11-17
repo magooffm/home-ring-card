@@ -96,6 +96,8 @@ The button opens your own Home Assistant on this repository; download Home Ring,
 3. Find **Home Ring** in HACS and download it.
 4. Reload your browser.
 
+Each version is a GitHub release, so HACS (the Marketplace) offers it as an update. Reload your browser after updating.
+
 ### By hand
 
 1. Copy `dist/home-ring-card.js` to `<config>/www/home-ring-card/home-ring-card.js`.
@@ -402,3 +404,5 @@ The ring moves when it's on screen. To also switch a tablet to the ring's view, 
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
+
+Home Ring started from [anchorapp100/home-ring-card](https://github.com/anchorapp100/home-ring-card) and has since gone its own way.

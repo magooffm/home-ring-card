@@ -1,0 +1,29 @@
+name: Release
+
+# Push a tag such as v1.7.1 and this makes a GitHub release with the card attached.
+# HACS (the Marketplace) then offers that version as an update.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the card's version
+        run: |
+          v=$(grep -oP "HOME_RING_VERSION = '\K[^']+" dist/home-ring-card.js)
+          if [ "v$v" != "$GITHUB_REF_NAME" ]; then
+            echo "The tag $GITHUB_REF_NAME does not match HOME_RING_VERSION ($v) in dist/home-ring-card.js"
+            exit 1
+          fi
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/home-ring-card.js --title "Home Ring $GITHUB_REF_NAME" --generate-notes
