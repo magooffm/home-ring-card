@@ -27,6 +27,10 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
 
 - Ring only (the new default): no corners or panel, the ring has the whole card. Tap a light, switch, fan, speaker or blind to switch it; tap anything else or hold any thing for Home Assistant's own dialog. The panel shows only while customising. `layout: full` or Customise brings corners and panel back, per screen.
 
+## Done in 1.7.2
+
+- Choose what floor and room labels say: temperature, readings such as humidity or CO₂, and how many of each kind are on. One shared choice per level, and an own choice for any floor or room.
+
 ## Ideas
 
 ### Positions, continued

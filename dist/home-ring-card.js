@@ -7,7 +7,7 @@
  * slide on a light to dim it. Everything comes from Home Assistant's own floors, areas and entities, so new
  * devices appear by themselves once they have a room.
  */
-const HOME_RING_VERSION = '1.7.1';
+const HOME_RING_VERSION = '1.7.2';
 
 const HR_CSS = `
 :host{
@@ -202,6 +202,10 @@ ha-card{display:block;background:var(--bg);color:var(--text);overflow:hidden;bor
 #ctl .dial .pp text{fill:var(--muted);font-size:9px;font-weight:800;pointer-events:none;}
 #ctl .dial .pp.on text{fill:#0a0f16;}
 #ctl .dial .pp:focus{outline:none;} #ctl .dial .pp:focus-visible circle{stroke:var(--ink);stroke-width:3;}
+#ctl .tchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+#ctl .tchip{all:unset;cursor:pointer;padding:6px 11px;border-radius:999px;font-size:12.5px;font-weight:750;color:var(--muted);border:1px solid var(--line);}
+#ctl .tchip.on{color:var(--text);border-color:color-mix(in srgb,var(--light) 60%,transparent);background:color-mix(in srgb,var(--light) 14%,transparent);}
+#ctl .tchip:focus-visible{box-shadow:0 0 0 2px var(--ink);}
 #ctl .kchips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;}
 #ctl .kchips .chip i{width:12px;height:12px;background:var(--sc);box-shadow:none;} #ctl .dot{all:unset;cursor:pointer;width:30px;height:30px;border-radius:50%;border:2px solid color-mix(in srgb,var(--ink) 25%,transparent);}
 #ctl .dot.white{background:linear-gradient(135deg,#fff3e0,#fff);}
@@ -557,7 +561,7 @@ function createRing(sr, host, CFG) {
      A thing in a group leaves its real room in My view; the Everything view shows it back where it really is. */
   // pos: kind (or system) -> where it sits, in degrees clockwise from the top;  col: 'k:<kind>', 'f:', 'a:' or 'e:' keys -> '#rrggbb'
   // theme: 'dark', 'light' or 'ha' (follow Home Assistant's theme)
-  const emptyProfile = () => ({ v: PROFILE_V, hide: [], name: {}, cat: {}, nol: [], groups: [], grp: {}, corners: null, pos: {}, col: {}, theme: null });
+  const emptyProfile = () => ({ v: PROFILE_V, hide: [], name: {}, cat: {}, nol: [], groups: [], grp: {}, corners: null, pos: {}, col: {}, theme: null, sub: {} });
   let PROF = emptyProfile(), HIDE = new Set(), NOL = new Set();
   const kindCol = c => PROF.col['k:' + c] || (CATS[c] ? CATS[c].sc : (SYSTEMS.find(x => x.id === c) || {}).hue || 'var(--light)');
   const kindName2 = c => (CATS[c] || SYSTEMS.find(x => x.id === c) || { name: c }).name;
@@ -605,7 +609,7 @@ function createRing(sr, host, CFG) {
     if (!raw) for (const g of PROF.groups) { GRP[g.id] = 'g:' + g.id; areas['g:' + g.id] = { area_id: 'g:' + g.id, name: g.name, floor_id: '~groups', virtual: true }; }
     const place = (eid, area) => GRP[PROF.grp[eid]] || area;
     const flist = Object.values(floors).sort((a, b) => (a.level ?? 99) - (b.level ?? 99) || String(a.name).localeCompare(b.name));
-    const byArea = {}, tempBy = {}, devShown = new Set(), left = {};
+    const byArea = {}, tempBy = {}, readBy = {}, devShown = new Set(), left = {};
     const areaOf = r => r && (r.area_id || (r.device_id && devices[r.device_id] && devices[r.device_id].area_id));
     for (const eid in states) {
       const r = ents[eid]; if (!r) continue;                 // only things in the entity registry have rooms
@@ -614,6 +618,8 @@ function createRing(sr, host, CFG) {
       if (CFG.exclude(eid, nm)) continue;
       const area = areaOf(r);
       if (!area || !areas[area]) continue;
+      // a room's readings, for its label: kept even when the sensor itself is hidden from the ring
+      if (eid.startsWith('sensor.')) { const dc = (st.attributes || {}).device_class; if (dc && num(st.state) != null) { const rb = readBy[area] = readBy[area] || {}; if (!rb[dc]) rb[dc] = eid; } }
       // hidden with Customise: its device counts as shown, so the rest of it does not come back as a slice of its own
       if (gone('e:' + eid)) { if (r.device_id) devShown.add(r.device_id); continue; }
       // a room's temperature = its thermostat (other temperature sensors are often batteries or device chips)
@@ -664,7 +670,7 @@ function createRing(sr, host, CFG) {
         const sn = mk('floor', sy.name, { hid: raw && HIDE.has('f:sys:' + sy.id), hue: PROF.col['k:' + sy.id] || sy.hue, id: 'sys:' + sy.id, sys: sy.id });
         const areaIds = Object.keys(byArea).filter(a => byArea[a].some(x => sy.cats.includes(x.c))).sort(byName);
         for (const a of areaIds) {
-          const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue: sn.hue, id: a, tempEid: tempBy[a] });
+          const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue: sn.hue, id: a, tempEid: tempBy[a], readings: readBy[a] || null });
           byArea[a].filter(x => sy.cats.includes(x.c)).map(x => entNode(x, a, sn.hue))
             .sort((p, q) => p.name.localeCompare(q.name)).forEach(e => { e.parent = an; an.kids.push(e); });
           an.parent = sn; sn.kids.push(an);
@@ -674,7 +680,7 @@ function createRing(sr, host, CFG) {
     } else {
       const roomNode = (a, hue) => {
         hue = PROF.col['a:' + a] || hue;
-        const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue, id: a, tempEid: tempBy[a] });
+        const an = mk('area', aName(a), { auto: areas[a].name, hid: raw && HIDE.has('a:' + a), virtual: !!areas[a].virtual, hue, id: a, tempEid: tempBy[a], readings: readBy[a] || null });
         // one kind picked in the bar: its things go straight into the room, without a ring that would only say its name
         if (!whole && FILTER && FILTER.length === 1) {
           byArea[a].map(x => entNode(x, a, hue)).sort((p, q) => p.name.localeCompare(q.name)).forEach(e => { e.parent = an; an.kids.push(e); });
@@ -833,13 +839,79 @@ function createRing(sr, host, CFG) {
   const textW = (s, font) => { cv.font = font; return cv.measureText(s).width; };
   const FONT = px => `650 ${px}px -apple-system,"Segoe UI",Roboto,sans-serif`;
   function fitText(s, px, avail) { if (textW(s, FONT(px)) <= avail) return s; while (s.length > 2 && textW(s + '…', FONT(px)) > avail) s = s.slice(0, -1); return s.length > 2 ? s + '…' : null; }
+  /* ---------- what a floor's or room's label says ----------
+     Chosen in Customise (tap a floor or a room), for every floor and every room: the temperature, a reading such as humidity,
+     and how many of a kind are on. A floor or room can also have its own choice, which then wins over the shared one.
+     Counts of nothing are left out, so a label only says what is going on. */
+  const SUB_DEFAULT = { floor: ['lights', 'heating'], area: ['temp', 'lights', 'heating'] };
+  const subItems = lv => (PROF.sub && PROF.sub[lv]) || SUB_DEFAULT[lv];
+  const levelOf = n => n.kind === 'area' ? 'area' : 'floor';
+  const ownKey = n => n.kind === 'area' ? 'a:' + n.id : 'f:' + (n.id ?? '_');
+  const ownSub = n => (PROF.sub && PROF.sub[ownKey(n)]) || null;
+  const subFor = n => ownSub(n) || subItems(levelOf(n));
+  const ON_WORD = { lights: ['light', 'lights'], heating: ['heating', 'heating'], media: ['playing', 'playing'], covers: ['blind open', 'blinds open'], plugs: ['plug on', 'plugs on'],
+    fans: ['fan on', 'fans on'], sensors: ['open or moving', 'open or moving'], safety: ['alarm!', 'alarms!'], alarm: ['armed', 'armed'], locks: ['unlocked', 'unlocked'],
+    valves: ['valve open', 'valves open'], vacuums: ['running', 'running'], sirens: ['sounding', 'sounding'] };
+  const READ_NAME = { humidity: 'Humidity', carbon_dioxide: 'CO₂', illuminance: 'Light level', pm25: 'PM2.5', pm10: 'PM10', volatile_organic_compounds: 'VOC',
+    volatile_organic_compounds_parts: 'VOC', pressure: 'Pressure', atmospheric_pressure: 'Pressure', sound_pressure: 'Noise', power: 'Power', energy: 'Energy', moisture: 'Moisture', aqi: 'Air quality' };
+  const SKIP_READ = ['temperature', 'battery', 'signal_strength', 'voltage', 'current', 'timestamp', 'duration', 'enum', 'data_size', 'data_rate'];
+  const roomTempAny = n => { const t = roomTemp(n); if (t != null) return t; const e = n.readings && n.readings.temperature, st = e && states()[e]; return st && !unavail(st) ? num(st.state) : null; };
+  function subPart(n, k, L) {
+    if (k === 'temp') {
+      if (n.kind === 'area') { const t = roomTempAny(n); return t != null ? deg(t) : null; }
+      const T = wholeOf(n).kids.filter(r => r.kind === 'area').map(roomTempAny).filter(t => t != null);    // a floor: its rooms, on average
+      return T.length ? deg(T.reduce((a, b) => a + b, 0) / T.length) : null;
+    }
+    if (k.startsWith('r:')) { const e = n.readings && n.readings[k.slice(2)], st = e && states()[e]; return st && !unavail(st) ? stateText(e, st) : null; }
+    if (!CATS[k]) return null;
+    const c = L.filter(e => e.cat === k && isActive(e.eid, states()[e.eid])).length; if (!c) return null;
+    const w = ON_WORD[k] || [CATS[k].name.toLowerCase(), CATS[k].name.toLowerCase()];
+    return c + ' ' + w[c === 1 ? 0 : 1];
+  }
   function subOf(n) {
     if (n.kind === 'ent') return stateText(n.eid, states()[n.eid]);
     const on = activeCount(n);
     if (n.kind === 'cat') return on ? on + ' on' : '';
-    const parts = CAT_ORDER.filter(c => !NO_COUNT.includes(c)).map(c => { const k = leaves(n).filter(e => e.cat === c && isActive(e.eid, states()[e.eid])).length; return k ? k + ' ' + CATS[c].name.toLowerCase() : null; }).filter(Boolean);
-    const t = n.kind === 'area' ? roomTemp(n) : null;
-    return [t != null ? deg(t) : null, ...parts.slice(0, 2)].filter(Boolean).join(' · ');
+    const L = leaves(wholeOf(n));                          // counts are for the whole room, whatever the bar shows
+    return subFor(n).map(k => subPart(n, k, L)).filter(Boolean).join(' · ');
+  }
+  // the choices for a level: temperature, the readings any room has, and the kinds the house has
+  function subChoices(lv, one) {
+    const H2 = one ? [wholeOf(one)] : houseNodes.filter(n => n.kind === 'area'), L = leaves(house());
+    const reads = [...new Set(H2.flatMap(n => Object.keys(n.readings || {})))].filter(d => !SKIP_READ.includes(d))
+      .sort((a, b) => (READ_NAME[a] ? 0 : 1) - (READ_NAME[b] ? 0 : 1) || a.localeCompare(b));
+    const kinds = CAT_ORDER.filter(c => !NO_COUNT.includes(c) && c !== 'cameras' && L.some(e => e.cat === c));
+    return [['temp', lv === 'floor' ? 'Temperature (average)' : 'Temperature']]
+      .concat(lv === 'area' ? reads.map(d => ['r:' + d, READ_NAME[d] || nice(d)]) : [])
+      .concat(kinds.map(c => [c, CATS[c].name + ' on']));
+  }
+  // the label part of a floor's or room's Customise card: shared with the others, or its own
+  function subSection(t) {
+    const lv = levelOf(t), word = lv === 'floor' ? (MODE === 'systems' ? 'system' : 'floor') : (t.virtual ? 'group' : 'room');
+    const own = !!ownSub(t), cur = subFor(t);
+    return `<div class="lbl">Label</div><div class="seg" role="group" aria-label="Label" style="margin-top:6px">` +
+      `<button data-subown="0" class="${own ? '' : 'on'}" aria-pressed="${!own}">Same as every ${word}</button><button data-subown="1" class="${own ? 'on' : ''}" aria-pressed="${own}">Own choice for this ${word}</button></div>` +
+      `<div class="tchips" data-sub="${own ? ownKey(t) : lv}">` +
+      subChoices(lv, own ? t : null).map(([k, nm]) => `<button class="tchip${cur.includes(k) ? ' on' : ''}" data-sk="${esc(k)}" aria-pressed="${cur.includes(k)}">${esc(nm)}</button>`).join('') + `</div>
+      <div class="note" style="margin-top:6px">${own ? `Only ${esc(t.name)}. The other ${word}s keep the shared choice.` : `Changes every ${word} without its own choice.`}</div>`;
+  }
+  function wireSub(el, t) {
+    const lv = levelOf(t), word = lv === 'floor' ? 'Floors' : 'Rooms';
+    const names = (keys, one) => keys.length ? keys.map(x => (subChoices(lv, one).find(c => c[0] === x) || [x, x])[1].replace(/ on$/, '')).join(', ') : 'name only';
+    el.querySelectorAll('[data-subown]').forEach(b => b.onclick = () => {
+      const want = b.dataset.subown === '1'; if (want === !!ownSub(t)) return;
+      // its own choice starts from the shared one; going back drops it
+      change(p => { const sub = Object.assign({}, p.sub); if (want) sub[ownKey(t)] = subItems(lv).slice(); else delete sub[ownKey(t)]; p.sub = sub; },
+        t.name + (want ? ': own label' : ': same label as the others'));
+    });
+    el.querySelectorAll('[data-sub]').forEach(box => {
+      const key = box.dataset.sub, one = key === lv ? null : t, order = subChoices(lv, one).map(x => x[0]);
+      box.querySelectorAll('[data-sk]').forEach(b => b.onclick = () => {
+        const k = b.dataset.sk, cur = one ? subFor(t) : subItems(lv), on = !cur.includes(k);
+        const next = order.filter(x => x === k ? on : cur.includes(x));      // kept in the order of the choices
+        change(p => { p.sub = Object.assign({}, p.sub, { [key]: next }); }, (one ? t.name : word) + ': ' + names(next, one));
+      });
+    });
   }
   function labels() {
     gL.textContent = ''; gC.textContent = ''; defs.textContent = '';
@@ -1854,6 +1926,7 @@ function createRing(sr, host, CFG) {
     if (hid.length) h += `<div class="lbl">Hidden${home ? '' : ' here'} · ${hid.length} · tap the eye to bring back</div><div class="erows">` + hid.map((x, i) =>
       `<div class="erow off"><span class="en">${esc(x.name)}<small>${esc(x.where)}</small></span><button class="eye" data-show="${i}" aria-label="Show ${esc(x.name)}" title="Bring back">${svgOf('eyeoff')}</button></div>`).join('') + `</div>`;
     const colKey = t.kind === 'cat' || t.sys ? 'k:' + (t.cat || t.sys) : t.kind === 'area' && t.id !== '_energy' && MODE === 'rooms' ? 'a:' + t.id : t.kind === 'floor' ? 'f:' + (t.id ?? '_') : null;
+    if (t.kind === 'floor' || t.kind === 'area') h += subSection(t);
     if (t.kind === 'cat' || t.sys) h += kindSection(t.cat || t.sys);
     else if (colKey) h += colourRow(colKey, t.hue, t.kind === 'area' ? (t.virtual ? 'Colour of this group' : 'Colour of this room') : 'Colour of this floor');
     if (home) {
@@ -1913,6 +1986,7 @@ function createRing(sr, host, CFG) {
     el.querySelectorAll('[data-show]').forEach(b => b.onclick = () => { const x = hid[+b.dataset.show]; showKey(x.k, x.name); });
     if (t.kind === 'cat' || t.sys) wirePos(el, t.cat || t.sys, t.name);
     if (colKey) wireColour(el, colKey, t.name);
+    if (t.kind === 'floor' || t.kind === 'area') wireSub(el, t);
     el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { editKind = b.dataset.kind; controls(); reveal(); });
     el.querySelectorAll('[data-theme]').forEach(b => b.onclick = () => {
       const v = b.dataset.theme; if (v === (PROF.theme || CFG.theme)) return;
@@ -2001,7 +2075,8 @@ function createRing(sr, host, CFG) {
     const pos = Object.fromEntries(Object.entries(v.pos && typeof v.pos === 'object' ? v.pos : {}).filter(([, x]) => typeof x === 'number' && x >= 0 && x < 360));
     // anything this version does not know is kept as it is, so saving here never strips what a newer version added
     return Object.assign({}, v, { v: typeof v.v === 'number' ? v.v : PROFILE_V, hide: strs(v.hide), name: map(v.name, () => true), cat: map(v.cat, x => CAT_ORDER.includes(x)), nol: strs(v.nol),
-      groups, grp: map(v.grp, x => groups.some(g => g.id === x)), corners: cleanCorners(v.corners), pos, col: map(v.col, okHex), theme: ['dark', 'light', 'ha'].includes(v.theme) ? v.theme : null });
+      groups, grp: map(v.grp, x => groups.some(g => g.id === x)), corners: cleanCorners(v.corners), pos, col: map(v.col, okHex),
+      sub: Object.fromEntries(Object.entries(v.sub && typeof v.sub === 'object' ? v.sub : {}).filter(([k, x]) => /^(floor|area|[af]:.+)$/.test(k) && Array.isArray(x)).map(([k, x]) => [k, x.filter(y => typeof y === 'string').slice(0, 8)])), theme: ['dark', 'light', 'ha'].includes(v.theme) ? v.theme : null });
   };
   // st: whether each Home Assistant layer has been read ('ok'), is not there on this Home Assistant ('none'), or not yet ('wait')
   const profStore = { vals: { all: null, user: null, here: null }, st: { all: 'wait', user: 'wait' }, user: null, unsubs: [], started: false, sig: '', ls: 'homeRing:here:' + CFG.profile_key };

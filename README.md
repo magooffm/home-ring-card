@@ -298,6 +298,23 @@ You can also reach every kind from the first Customise card (tap the centre at H
 
 **Look.** The first Customise card also has **Look**: **Dark** (the built-in look), **Light**, or **Home Assistant**, which follows your Home Assistant theme. Like everything else in the setup it can differ per screen or per person, so a wall tablet can stay dark while phones follow Home Assistant.
 
+### What floors and rooms say
+
+Each floor and room slice has a short line under its name. Choose what goes in it: tap a floor (or a room) in Customise, and under **Label** switch parts on and off.
+
+- **Same as every room** (or floor) changes the shared choice, used by every room without its own.
+- **Own choice for this room** gives just that room its own parts, for example CO₂ only in the office. It starts from the shared choice; switching back to **Same as every room** drops it.
+
+| For | Choices |
+|---|---|
+| Floors | Temperature (the average of their rooms), and how many lights, heaters, blinds, plugs … are on |
+| Rooms | Temperature, any reading a room has (humidity, CO₂, light level, power …), and how many of each kind are on |
+
+- Only what is going on is shown: "0 lights" is left out, so a floor with only **Lights on** chosen says "3 lights" or nothing.
+- A room's temperature comes from its thermostat, or from a temperature sensor if it has none. A reading comes from the first sensor of that kind in the room, even one you hid from the ring.
+- To start with, floors show lights and heating, and rooms show the temperature, lights and heating.
+- The choices are part of the setup, so they can differ per screen or per person.
+
 ### Groups: rooms of your own
 
 A group is a room that exists only on the ring. It can hold things from any real rooms, for example "Evening" with a lamp from the living room and one from the kitchen.
