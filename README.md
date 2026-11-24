@@ -21,7 +21,7 @@ Home Ring reads Home Assistant's own floors, rooms (areas) and devices, so there
 - **Tap a light, switch, fan, speaker or blind** to switch it. **Tap anything else** (a thermostat, sensor, camera, lock), or **hold any thing**, to open Home Assistant's own controls for it. Locks, sirens and the alarm never switch on a tap.
 - **Hold a room** (or its **Lights**) to switch all its lights: off if any are on, otherwise on.
 - **Slide** up or down on a dimmable light to set its brightness, without opening anything.
-- **Slide on a room's Lights** to dim its lights together, without going in. Choose in Customise which lights join in, for example only the ceiling and the floor lamp. With only Lights picked in the bar, slide on the room itself.
+- **Slide on a room, or on its Lights,** to dim its lights together, without going in. Choose in Customise which lights join in, for example only the ceiling and the floor lamp. Wherever you can slide, a hold takes a little longer (0.8 s), so a slide that starts slowly is never taken for a hold.
 - **Room colours follow the temperature.** A room with a thermostat leans blue when it's cold and orange when it's warm.
 - **Motion makes the room pulse**, so you can see someone walk through the house.
 - **Scenes** sit in a band around the outside. Tap one to run it.
@@ -268,7 +268,7 @@ The view stays where it is while you customise. Tap anything you can see, a floo
   - **Hide from the ring.**
 - **Tap a floor, room or kind** to rename or hide it, or give it a colour. Its card also lists what is in it, with an eye beside each one to hide it.
 - **Tap a kind** (Lights, Blinds, …) inside a room to give it a place on the ring and a colour. See [Places and colours](#places-and-colours).
-- **Tap a room or its Lights** to choose the **Lights that join in**. Tap a light to add it or leave it out. These are the lights a hold switches and a slide on Lights dims. Every light joins in until you leave one out. The choice belongs to each light, so it matches **Joins in** on the light's own card. Lights left out by `lights_exclude` are not listed.
+- **Tap a room or its Lights** to choose the **Lights that join in**. Tap a light to add it or leave it out. These are the lights a hold switches and a slide on the room or its Lights dims. Every light joins in until you leave one out. The choice belongs to each light, so it matches **Joins in** on the light's own card. Lights left out by `lights_exclude` are not listed.
 - **Tap the centre** for the place you are in. That card also has **This setup is for** and the animation speed.
 - **Hidden things** are listed at the bottom of the card for their room, their floor and the whole house. Tap the crossed-out eye to bring one back.
 - **Tap a corner button** to pick what it does.

@@ -380,7 +380,7 @@ const okHex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 const toHex = v => okHex(v) ? v.toLowerCase() : VAR_HEX[v] || '#8a97a6';
 const PROFILE_V = 1;                                    // the setup format this version writes; a newer one is never written over
 const RING_WT = { floor: 1, area: 1.12, cat: 0.82, ent: 1.08 };
-const HOLD_MS = 480, MOVE_PX = 10, SLIDE_PX = 2.2;      // a 220 px slide covers 0-100 %
+const HOLD_MS = 480, HOLD_SLIDE_MS = 800, MOVE_PX = 10, SLIDE_PX = 2.2;      // a 220 px slide covers 0-100 %
 const MINI_LEVELS = 2;                                  // mini: floors + rooms
 
 function normaliseConfig(c) {
@@ -1059,9 +1059,9 @@ function createRing(sr, host, CFG) {
   function switchLights(list, turnOn) {
     for (const d of ['light', 'switch']) { const ids = list.filter(e => domOf(e) === d).map(e => e.eid); if (ids.length) call(d, turnOn ? 'turn_on' : 'turn_off', { entity_id: ids }); }
   }
-  // slide on a room's Lights (or on the room, when the bar shows only Lights) = dim the lights that join in, together.
-  // Which ones join in is chosen in Customise; they are the same ones a hold switches.
-  const lightsSlice = n => !!n && ((n.kind === 'cat' && n.cat === 'lights') || (n.kind === 'area' && !!FILTER && FILTER.length === 1 && FILTER[0] === 'lights'));
+  // slide on a room (or a group) or its Lights = dim the lights that join in, together.
+  // Which ones join in is chosen in Customise; they are the same ones a hold switches. A room without lights cannot slide.
+  const lightsSlice = n => !!n && ((n.kind === 'cat' && n.cat === 'lights') || n.kind === 'area');
   const canSlide = n => canDim(n) || (lightsSlice(n) && roomLights(wholeOf(n)).length > 0);
   function groupBri(L) { const on = L.filter(e => isActive(e.eid, states()[e.eid])); return on.length ? Math.round(on.reduce((s, e) => s + briOf(e), 0) / on.length) : 0; }
   function slideLights(n, v) {
@@ -1134,7 +1134,7 @@ function createRing(sr, host, CFG) {
       else if (canToggle(n)) { toggleThing(n); select(n); }
       else if (n.kind === 'ent') { buzz(); select(n); }
       else if (n.kind === 'area' || (n.kind === 'cat' && n.cat === 'lights')) toggleRoomLights(n);
-    }, HOLD_MS);
+    }, canSlide(n) ? HOLD_SLIDE_MS : HOLD_MS);       // where a slide is possible, a hold waits longer, so a slow start is still a slide
   });
   svg.addEventListener('pointermove', e => {
     if (e.pointerType === 'mouse' && !press) hover(nodeOf(e.target));

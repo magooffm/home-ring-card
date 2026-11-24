@@ -33,7 +33,7 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
 
 ## Done in 1.7.3
 
-- Slide on a room's Lights to dim its lights together, without going in. Choose in Customise which lights join in; a hold switches the same ones.
+- Slide on a room or its Lights to dim its lights together, without going in. Choose in Customise which lights join in; a hold switches the same ones.
 
 ## Ideas
 
