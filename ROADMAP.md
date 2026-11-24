@@ -31,6 +31,10 @@ Ideas for Home Ring, roughly in the order they build on each other. Nothing here
 
 - Choose what floor and room labels say: temperature, readings such as humidity or CO₂, and how many of each kind are on. One shared choice per level, and an own choice for any floor or room.
 
+## Done in 1.7.3
+
+- Slide on a room's Lights to dim its lights together, without going in. Choose in Customise which lights join in; a hold switches the same ones.
+
 ## Ideas
 
 ### Positions, continued

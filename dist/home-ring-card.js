@@ -7,7 +7,7 @@
  * slide on a light to dim it. Everything comes from Home Assistant's own floors, areas and entities, so new
  * devices appear by themselves once they have a room.
  */
-const HOME_RING_VERSION = '1.7.2';
+const HOME_RING_VERSION = '1.7.3';
 
 const HR_CSS = `
 :host{
@@ -1059,6 +1059,21 @@ function createRing(sr, host, CFG) {
   function switchLights(list, turnOn) {
     for (const d of ['light', 'switch']) { const ids = list.filter(e => domOf(e) === d).map(e => e.eid); if (ids.length) call(d, turnOn ? 'turn_on' : 'turn_off', { entity_id: ids }); }
   }
+  // slide on a room's Lights (or on the room, when the bar shows only Lights) = dim the lights that join in, together.
+  // Which ones join in is chosen in Customise; they are the same ones a hold switches.
+  const lightsSlice = n => !!n && ((n.kind === 'cat' && n.cat === 'lights') || (n.kind === 'area' && !!FILTER && FILTER.length === 1 && FILTER[0] === 'lights'));
+  const canSlide = n => canDim(n) || (lightsSlice(n) && roomLights(wholeOf(n)).length > 0);
+  function groupBri(L) { const on = L.filter(e => isActive(e.eid, states()[e.eid])); return on.length ? Math.round(on.reduce((s, e) => s + briOf(e), 0) / on.length) : 0; }
+  function slideLights(n, v) {
+    const L = roomLights(wholeOf(n)), where = n.kind === 'cat' ? n.parent.name : n.name; if (!L.length) return;
+    if (v <= 0) switchLights(L, false);
+    else {
+      const dim = L.filter(canDim);
+      if (dim.length) call('light', 'turn_on', { entity_id: dim.map(e => e.eid), brightness_pct: v });
+      switchLights(L.filter(e => !canDim(e)), true);      // on/off lights and switches just go on
+    }
+    buzz(); toast(`${where}: ${L.length} light${L.length === 1 ? '' : 's'} ${v <= 0 ? 'off' : 'at ' + v + '%'}`);
+  }
   function toggleRoomLights(n) {
     const where = n.kind === 'home' ? 'House' : n.kind === 'cat' ? n.parent.name : n.name, L = roomLights(wholeOf(n));
     buzz(); flash(n);
@@ -1102,7 +1117,10 @@ function createRing(sr, host, CFG) {
       toast((SAFETY_LABEL[(st.attributes || {}).device_class] || 'Alarm') + ' · ' + roomName(e));
     }
   }
-  function showSlide(n, v) { const o = $('slide'); o.style.display = 'grid'; o.innerHTML = `<div><b>${v}%</b><span>${esc(n.name)}</span></div>`; o.style.setProperty('--p', v); }
+  function showSlide(n, v) {
+    const k = n.kind === 'ent' ? 0 : roomLights(wholeOf(n)).length, label = n.kind === 'ent' ? n.name : (n.kind === 'cat' ? n.parent.name : n.name) + ' · ' + k + ' light' + (k === 1 ? '' : 's');
+    const o = $('slide'); o.style.display = 'grid'; o.innerHTML = `<div><b>${v}%</b><span>${esc(label)}</span></div>`; o.style.setProperty('--p', v);
+  }
   function hideSlide() { $('slide').style.display = 'none'; }
   svg.addEventListener('contextmenu', e => e.preventDefault());   // a long press must not open the browser's menu
   svg.addEventListener('pointerdown', e => {
@@ -1124,10 +1142,11 @@ function createRing(sr, host, CFG) {
     const dx = e.clientX - press.x, dy = e.clientY - press.y;
     if (!press.sliding && Math.hypot(dx, dy) > MOVE_PX) {
       clearTimeout(press.timer);
-      if (EDIT || !canDim(press.n)) { press = null; return; }
-      press.sliding = true; press.bri0 = briOf(press.n);
+      if (EDIT || !canSlide(press.n)) { press = null; return; }
+      const one = press.n.kind === 'ent';
+      press.sliding = true; press.bri0 = one ? briOf(press.n) : groupBri(roomLights(wholeOf(press.n)));
       try { svg.setPointerCapture(press.id); } catch (_) {}
-      select(press.n);
+      if (one) select(press.n); else flash(press.n);
     }
     if (press.sliding) { press.bri = clamp(Math.round(press.bri0 - dy / SLIDE_PX), 0, 100); showSlide(press.n, press.bri); }
   });
@@ -1135,7 +1154,9 @@ function createRing(sr, host, CFG) {
     if (!press) return; const p = press; press = null; clearTimeout(p.timer);
     if (p.sliding) {
       hideSlide();
-      if (p.bri != null) { if (p.bri <= 0) call('light', 'turn_off', { entity_id: p.n.eid }); else call('light', 'turn_on', { entity_id: p.n.eid, brightness_pct: p.bri }); buzz(); }
+      if (p.bri == null) return;
+      if (p.n.kind !== 'ent') { slideLights(p.n, p.bri); return; }
+      if (p.bri <= 0) call('light', 'turn_off', { entity_id: p.n.eid }); else call('light', 'turn_on', { entity_id: p.n.eid, brightness_pct: p.bri }); buzz();
       return;
     }
     if (EDIT) { editPick(p.n); return; }
@@ -1889,8 +1910,8 @@ function createRing(sr, host, CFG) {
     h += colourRow('e:' + n.eid, n.sc, 'Colour');
     if (n.cat === 'lights') {
       const yaml = CFG.lights_exclude(n.eid, n.name), out = NOL.has(n.eid);
-      h += `<div class="lbl">Holding its room, and “all lights”</div>` + (yaml ? `<div class="note" style="margin-top:6px">Left out by <b>lights_exclude</b> in the card's settings.</div>`
-        : `<div class="row"><button class="btn${out ? '' : ' on'}" data-a="nol" data-v="in">Switches it</button><button class="btn${out ? ' on' : ''}" data-a="nol" data-v="out">Leaves it alone</button></div>`);
+      h += `<div class="lbl">Holding or sliding its room's Lights, and “all lights”</div>` + (yaml ? `<div class="note" style="margin-top:6px">Left out by <b>lights_exclude</b> in the card's settings.</div>`
+        : `<div class="row"><button class="btn${out ? '' : ' on'}" data-a="nol" data-v="in">Joins in</button><button class="btn${out ? ' on' : ''}" data-a="nol" data-v="out">Leaves it alone</button></div>`);
     }
     h += `<div class="row">${isHid(n) ? `<button class="btn on" data-a="hide">${svgOf('eye')}&nbsp;Show in My view again</button>` : n.hid ? '' : `<button class="btn warn" data-a="hide">${svgOf('eyeoff')}Hide from ${VIEW === 'all' ? 'My view' : 'the ring'}</button>`}<button class="btn" data-a="close">Back</button></div>
       <div class="note">${n.hid && !isHid(n) ? 'Hidden in My view along with its room, floor or kind. ' : ''}${esc(scopeNote())} A hidden thing is listed in its room's Customise card, to bring back.</div>`;
@@ -1908,11 +1929,28 @@ function createRing(sr, host, CFG) {
       if (k === 'grp') { b.onchange = () => { if (b.value === '+') { newGroup = true; controls(); } else setGroup(n, b.value); }; return; }
       if (k === 'close') b.onclick = () => { sel = null; nodes.forEach(paint); controls(); };
       if (k === 'hide') b.onclick = () => toggleHide(n);
-      if (k === 'nol') b.onclick = () => { const out = b.dataset.v === 'out'; if (out === NOL.has(n.eid)) return; change(p => { p.nol = p.nol.filter(x => x !== n.eid); if (out) p.nol.push(n.eid); }, n.name + (out ? ': left alone' : ': switched with its room')); };
+      if (k === 'nol') b.onclick = () => { const out = b.dataset.v === 'out'; if (out === NOL.has(n.eid)) return; change(p => { p.nol = p.nol.filter(x => x !== n.eid); if (out) p.nol.push(n.eid); }, n.name + (out ? ': left alone' : ': joins in')); };
     });
   }
   // Customise, a floor, room or kind (or the whole house): rename or hide it, hide what is in it, and bring hidden things back.
   // The card for the place you are in also holds who the setup is for and this screen's animation speed.
+  // the lights a hold on a room or its Lights switches, and a slide on its Lights dims: every light, less the ones left alone
+  // (the same choice as "Leaves it alone" on a light's own card; lights_exclude in the card's settings always wins)
+  const lightPicks = t => (t.kind === 'area' || lightsSlice(t)) ? leaves(wholeOf(t)).filter(e => e.cat === 'lights' && !CFG.lights_exclude(e.eid, e.name)) : [];
+  function lightsSection(t) {
+    const L = lightPicks(t); if (!L.length) return '';
+    const n = L.filter(e => !NOL.has(e.eid)).length, slide = lightsSlice(t);
+    return `<div class="lbl">Lights that join in · ${n} of ${L.length}</div><div class="tchips">` +
+      L.map(e => `<button class="tchip${NOL.has(e.eid) ? '' : ' on'}" data-nol="${esc(e.eid)}" aria-pressed="${!NOL.has(e.eid)}">${esc(e.name)}</button>`).join('') + `</div>
+      <div class="note" style="margin-top:6px">${n ? (slide ? 'Slide on ' + esc(t.kind === 'cat' ? 'Lights' : t.name) + ' to dim these together; hold to switch them.' : 'Holding ' + esc(t.name) + ' switches these.') + ' The “all lights” hold uses the same choice.'
+        : 'None chosen: holding' + (slide ? ' and sliding' : '') + ' here does nothing.'}</div>`;
+  }
+  function wireLights(el) {
+    el.querySelectorAll('[data-nol]').forEach(b => b.onclick = () => {
+      const eid = b.dataset.nol, join = NOL.has(eid), nm = b.textContent;
+      change(p => { p.nol = p.nol.filter(x => x !== eid); if (!join) p.nol.push(eid); }, nm + (join ? ': joins in' : ': left alone'));
+    });
+  }
   function groupEdit(el) {
     const t = editN || focus, home = t.kind === 'home', held = !!editN;
     const items = t.kind === 'area' ? leaves(t) : t.kids, hid = VIEW === 'all' ? [] : hiddenUnder(t), L = leaves(t).length;
@@ -1926,6 +1964,7 @@ function createRing(sr, host, CFG) {
     if (hid.length) h += `<div class="lbl">Hidden${home ? '' : ' here'} · ${hid.length} · tap the eye to bring back</div><div class="erows">` + hid.map((x, i) =>
       `<div class="erow off"><span class="en">${esc(x.name)}<small>${esc(x.where)}</small></span><button class="eye" data-show="${i}" aria-label="Show ${esc(x.name)}" title="Bring back">${svgOf('eyeoff')}</button></div>`).join('') + `</div>`;
     const colKey = t.kind === 'cat' || t.sys ? 'k:' + (t.cat || t.sys) : t.kind === 'area' && t.id !== '_energy' && MODE === 'rooms' ? 'a:' + t.id : t.kind === 'floor' ? 'f:' + (t.id ?? '_') : null;
+    h += lightsSection(t);
     if (t.kind === 'floor' || t.kind === 'area') h += subSection(t);
     if (t.kind === 'cat' || t.sys) h += kindSection(t.cat || t.sys);
     else if (colKey) h += colourRow(colKey, t.hue, t.kind === 'area' ? (t.virtual ? 'Colour of this group' : 'Colour of this room') : 'Colour of this floor');
@@ -1987,6 +2026,7 @@ function createRing(sr, host, CFG) {
     if (t.kind === 'cat' || t.sys) wirePos(el, t.cat || t.sys, t.name);
     if (colKey) wireColour(el, colKey, t.name);
     if (t.kind === 'floor' || t.kind === 'area') wireSub(el, t);
+    wireLights(el);
     el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { editKind = b.dataset.kind; controls(); reveal(); });
     el.querySelectorAll('[data-theme]').forEach(b => b.onclick = () => {
       const v = b.dataset.theme; if (v === (PROF.theme || CFG.theme)) return;
